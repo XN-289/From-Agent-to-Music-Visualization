@@ -1,0 +1,30 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+**/.env.local
+**/.env.*.local
+
+# Dependencies
+node_modules/
+
+# Next.js / Vite / Electron build output and caches
+.next/
+out/
+dist/
+dev-dist/
+release/
+test-results/
+
+# Local media, SQLite, and generated exports
+music-agent/data/
+music-agent/exports/
+music-agent/public/generated/
+
+# Tooling and OS noise
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

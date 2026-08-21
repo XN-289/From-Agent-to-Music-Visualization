@@ -208,6 +208,8 @@ export interface StageMediaSession {
   coverMimeType?: string;
   lyricsText?: string | null;
   lyricsFormat?: 'lrc' | 'enhanced-lrc' | 'vtt' | 'ttml' | 'yrc' | 'qrc' | null;
+  /** 从上传音频内嵌 USLT 提取的翻译歌词（如 language=chi 帧）；带时间轴时与主歌词共轴显示 */
+  translationLyrics?: string | null;
   updatedAt: number;
 }
 

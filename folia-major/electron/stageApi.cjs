@@ -1258,6 +1258,7 @@ function createStageApi({
       audioMimeType: audioFile?.contentType || undefined,
       coverMimeType: resolvedCoverMimeType,
       lyricsText: normalizedResolvedLyricsText || null,
+      translationLyrics: normalizeStageText(embeddedMetadata?.translationLyrics) || null,
       lyricsFormat: detectedLyricsFormat || null,
       updatedAt: sessionVersion,
     };

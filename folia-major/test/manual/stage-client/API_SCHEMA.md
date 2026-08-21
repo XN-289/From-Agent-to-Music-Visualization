@@ -184,6 +184,7 @@ interface StageMediaSession {
   coverMimeType?: string;
   lyricsText?: string | null;
   lyricsFormat?: 'lrc' | 'enhanced-lrc' | 'vtt' | 'yrc' | null;
+  translationLyrics?: string | null;
   updatedAt: number;
 }
 ```
@@ -202,6 +203,7 @@ interface StageMediaSession {
 | `coverMimeType` | `string` 可选 | 上传或内嵌封面的 MIME 类型。 |
 | `lyricsText` | `string \| null` 可选 | 歌词文本；可来自请求、歌词文件或音频内嵌歌词。 |
 | `lyricsFormat` | `'lrc' \| 'enhanced-lrc' \| 'vtt' \| 'yrc' \| null` 可选 | 歌词格式；未传时会尝试从文本检测。 |
+| `translationLyrics` | `string \| null` 可选 | 从上传 `audioFile` 的内嵌 USLT 帧提取的翻译歌词（`language=chi` 或 descriptor 含 `translation`）。带 LRC 时间戳时按主歌词共轴显示副字幕。仅当音频内嵌翻译帧时非空。 |
 | `updatedAt` | `number` | 服务端写入时间。 |
 
 ### 播放器公共对象

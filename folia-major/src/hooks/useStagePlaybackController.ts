@@ -583,6 +583,9 @@ export function useStagePlaybackController({
                 parsedLyrics = await LyricParserFactory.parse({
                     type: 'local',
                     lrcContent: session.lyricsText,
+                    ...(session.translationLyrics?.trim()
+                        ? { tLrcContent: session.translationLyrics }
+                        : {}),
                     formatHint: session.lyricsFormat || undefined,
                 });
             } catch (error) {

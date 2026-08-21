@@ -11,6 +11,8 @@ import { initializeLocalCoverRuntime } from './services/localCoverRuntime';
 
 // src/bootstrap.tsx
 // Mounts the React app after index.tsx installs runtime-level browser shims.
+// Keep rendering immediate: local-cover setup can wait on Service Worker
+// activation in dev mode and should never leave the whole app blank.
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -38,4 +40,5 @@ const renderApp = () => root.render(
     </React.StrictMode>
   );
 
-void initializeLocalCoverRuntime().finally(renderApp);
+renderApp();
+void initializeLocalCoverRuntime();

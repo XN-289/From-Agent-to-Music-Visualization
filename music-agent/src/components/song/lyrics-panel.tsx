@@ -40,7 +40,12 @@ export function LyricsPanel({ lines }: { lines: LyricsLine[] }) {
               : "text-muted-foreground hover:bg-accent hover:text-foreground",
           )}
         >
-          {l.text}
+          <span className="flex flex-col">
+            <span>{l.text}</span>
+            {l.translation ? (
+              <span className="text-xs opacity-60">{l.translation}</span>
+            ) : null}
+          </span>
         </button>
       ))}
     </div>

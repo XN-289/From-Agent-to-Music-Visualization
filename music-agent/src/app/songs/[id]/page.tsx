@@ -1,7 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { db, schema } from '@/lib/db';
-import type { LyricsLine } from '@/lib/audio/lrc';
+import { mergeTranslations, type LyricsLine } from '@/lib/audio/lrc';
 import { SongDetailClient, type SongDetailData } from '@/components/song/song-detail-client';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +54,15 @@ export default async function SongPage({ params }: { params: Promise<{ id: strin
       // 解析失败则无同步歌词
     }
   }
+  let tLrc: LyricsLine[] = [];
+  if (song.lyricsTlrc) {
+    try {
+      tLrc = JSON.parse(song.lyricsTlrc) as LyricsLine[];
+    } catch {
+      // 解析失败则仅显示主歌词
+    }
+  }
+  lrc = mergeTranslations(lrc, tLrc);
 
   return (
     <SongDetailClient

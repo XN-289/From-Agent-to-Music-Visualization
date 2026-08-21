@@ -9,8 +9,8 @@ const dbPath = process.env.DB_PATH ?? path.join(process.cwd(), 'data', 'music-ag
 mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const sqlite = new Database(dbPath);
-sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('busy_timeout = 5000'); // 多连接/未来多进程写入冲突时等待，而非直接 SQLITE_BUSY
+sqlite.pragma('journal_mode = WAL');
 
 export const db = drizzle(sqlite, { schema });
 export { schema };

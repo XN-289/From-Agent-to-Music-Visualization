@@ -1,7 +1,8 @@
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LyricsLine } from '@/lib/audio/lrc';
 import { renderCoverPng } from '@/lib/cover';
+import { extensionForImageUrl } from '@/lib/media-mime';
 import type { SongVariant } from '@/lib/providers/types';
 
 export interface PersistSongInput {
@@ -95,6 +96,29 @@ function extensionForUrl(url: string): string {
   return 'mp3';
 }
 
+const COVER_FILE_PATTERN = /^cover\.(png|jpe?g|webp)$/i;
+
+async function clearExistingCover(directory: string): Promise<void> {
+  const files = await readdir(directory).catch(() => [] as string[]);
+  await Promise.all(
+    files
+      .filter((file) => COVER_FILE_PATTERN.test(file))
+      .map((file) => rm(path.join(directory, file), { force: true })),
+  );
+}
+
+async function downloadCoverFile(imageUrl: string, directory: string): Promise<string> {
+  const resolvedUrl = resolveAudioUrl(imageUrl);
+  const res = await fetch(resolvedUrl);
+  if (!res.ok) throw new Error(`封面下载失败（HTTP ${res.status}）`);
+  const contentType = res.headers.get('content-type');
+  const ext = extensionForImageUrl(imageUrl, contentType);
+  const destination = path.join(directory, `cover.${ext}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  await writeFile(destination, bytes);
+  return destination;
+}
+
 function localPublicPathForUrl(url: string): string | null {
   if (!url.startsWith('/')) return null;
   const pathname = url.split(/[?#]/, 1)[0];
@@ -165,16 +189,29 @@ export async function persistGeneratedSong(input: PersistSongInput): Promise<Per
     ),
   ]);
 
-  // 封面：本地渐变渲染；失败不阻塞主流程（UI 与推送均有兜底）
-  const coverPath = path.join(directory, 'cover.png');
-  try {
-    await renderCoverPng({
-      title: input.title,
-      styleTags: input.styleTags ?? [],
-      outPath: coverPath,
-    });
-  } catch (e) {
-    console.warn('[media-output] 封面渲染失败:', e instanceof Error ? e.message : String(e));
+  // 封面：优先采用 Provider 返回的生成封面；下载失败或缺失时回退本地渐变渲染。
+  await clearExistingCover(directory);
+  let coverPath: string | null = null;
+  const providerImageUrl = input.variants.find((variant) => variant.imageUrl)?.imageUrl;
+  if (providerImageUrl) {
+    try {
+      coverPath = await downloadCoverFile(providerImageUrl, directory);
+    } catch (e) {
+      console.warn('[media-output] Provider 封面下载失败，回退本地封面:', e instanceof Error ? e.message : String(e));
+    }
+  }
+  if (!coverPath) {
+    const fallbackCoverPath = path.join(directory, 'cover.png');
+    try {
+      await renderCoverPng({
+        title: input.title,
+        styleTags: input.styleTags ?? [],
+        outPath: fallbackCoverPath,
+      });
+      coverPath = fallbackCoverPath;
+    } catch (e) {
+      console.warn('[media-output] 封面渲染失败:', e instanceof Error ? e.message : String(e));
+    }
   }
 
   return {
@@ -207,7 +244,7 @@ export async function loadPersistedSong(songId: string): Promise<LoadedSongBundl
     };
     const files = await readdir(directory);
     const audioPaths = files
-      .filter((file) => /^audio-\d+-\d+-.*\.(mp3|wav|flac|m4a)$/i.test(file))
+      .filter((file) => /^audio-\d+-.+\.(mp3|wav|flac|m4a)$/i.test(file))
       .map((file, index) => ({
         variantId: meta.variants?.[index]?.id ?? String(index),
         path: path.join(directory, file),
@@ -221,7 +258,9 @@ export async function loadPersistedSong(songId: string): Promise<LoadedSongBundl
       lyricsTxtPath: path.join(directory, 'lyrics.txt'),
       lyricsLrcPath: path.join(directory, 'lyrics.lrc'),
       lyricsTLrcPath: files.includes('lyrics.t.lrc') ? path.join(directory, 'lyrics.t.lrc') : null,
-      coverPath: files.includes('cover.png') ? path.join(directory, 'cover.png') : null,
+      coverPath: files.some((file) => COVER_FILE_PATTERN.test(file))
+        ? path.join(directory, files.find((file) => COVER_FILE_PATTERN.test(file))!)
+        : null,
       audioPaths,
       title: meta.title ?? 'Untitled',
       lyrics: meta.lyrics ?? null,

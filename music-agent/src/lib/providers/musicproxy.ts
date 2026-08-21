@@ -19,7 +19,7 @@ const DEFAULT_PROVIDER = 'suno_openaihk';
 const DEFAULT_MODEL = 'auto';
 
 function baseUrl(): string {
-  return process.env.MUSIC_PROXY_BASE_URL ?? 'http://114.132.214.9:8800';
+  return process.env.MUSIC_PROXY_BASE_URL ?? 'http://127.0.0.1:8800';
 }
 
 function apiKey(): string {
@@ -129,6 +129,7 @@ interface ProxyChoice {
   wav_url?: string;
   flac_url?: string;
   image_url?: string;
+  image_large_url?: string;
   duration?: number;
   title?: string;
   tags?: string;
@@ -157,14 +158,22 @@ interface TimingResponse {
 
 function toVariants(choices: ProxyChoice[] = []): SongVariant[] {
   return choices
-    .filter((choice) => choice.audio_url || choice.stream_url)
-    .map((choice, index) => ({
-      id: choice.id || `choice-${index}`,
-      audioUrl: choice.audio_url || choice.stream_url || '',
-      title: choice.title || `Generated ${index + 1}`,
-      durationSec: Number.isFinite(choice.duration) ? Math.round(choice.duration as number) : 0,
-      audioId: choice.id,
-    }));
+    .filter((choice) => Boolean(choice.audio_url))
+    .map((choice, index) => {
+      const rawDuration = choice.duration ?? choice.metadata?.duration;
+      const durationSec =
+        typeof rawDuration === 'number' && Number.isFinite(rawDuration)
+          ? Math.round(rawDuration)
+          : 0;
+      return {
+        id: choice.id || `choice-${index}`,
+        audioUrl: choice.audio_url ?? '',
+        title: choice.title || `Generated ${index + 1}`,
+        durationSec,
+        audioId: choice.id,
+        imageUrl: choice.image_large_url || choice.image_url || undefined,
+      };
+    });
 }
 
 function parseTiming(raw: TimingResponse): LyricsLine[] {
@@ -204,6 +213,7 @@ export class MusicProxyProvider implements SunoProvider {
 
   /** 参考音频上传：网关无此能力——抛错交由调用层提示 */
   async uploadReferenceFile(_file: { base64: string; fileName: string }): Promise<{ downloadUrl: string }> {
+    void _file;
     throw new UnsupportedFeatureError(this.id, 'uploadReferenceFile（参考音频上传）');
   }
 
@@ -237,10 +247,19 @@ export class MusicProxyProvider implements SunoProvider {
       const status = data.status ?? 'pending';
       const mapped = STATUS_MAP[status];
       if (mapped) {
+        const variants = toVariants(data.result?.choices);
+        if (mapped.status === 'success' && data.result?.choices?.length && variants.length === 0) {
+          return {
+            id: jobId,
+            status: 'processing',
+            progress: 92,
+            stage: '音频已生成，等待可下载地址',
+          };
+        }
         return {
           id: jobId,
           ...mapped,
-          result: mapped.status === 'success' ? toVariants(data.result?.choices) : undefined,
+          result: mapped.status === 'success' ? variants : undefined,
         };
       }
 
@@ -284,14 +303,17 @@ export class MusicProxyProvider implements SunoProvider {
   }
 
   async extend(_input: ExtendInput): Promise<GenerateResult> {
+    void _input;
     throw new UnsupportedFeatureError(this.id, 'extend');
   }
 
   async cover(_input: IterationInput): Promise<GenerateResult> {
+    void _input;
     throw new UnsupportedFeatureError(this.id, 'cover');
   }
 
   async replaceSection(_input: ReplaceSectionInput): Promise<GenerateResult> {
+    void _input;
     throw new UnsupportedFeatureError(this.id, 'replaceSection');
   }
 }

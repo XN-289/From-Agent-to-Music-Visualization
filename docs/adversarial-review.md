@@ -33,7 +33,7 @@
 - `musicproxy.ts` 使用 `Authorization: <MUSIC_PROXY_API_KEY>`，不带 `Bearer`；
 - `sunoapi.ts` 使用 `Authorization: Bearer <SUNO_API_KEY>`。
 
-公司文档应明确指出网关期望哪一种。若网关要求 `Bearer`，当前 `musicproxy.ts` 会在所有请求上失败；若网关要求原始 key，则当前写法正确。
+已按公司网关契约确认：`Authorization` 直接放 `MUSIC_PROXY_API_KEY`，不带 `Bearer`；当前 `musicproxy.ts` 写法正确。
 
 ### P1-3 动态文件系统访问触发 Turbopack 全项目 trace
 
@@ -84,4 +84,3 @@ folia-major: npm run build -> pass
 - 不要把真实 `MUSIC_PROXY_API_KEY`、`FOLIA_STAGE_TOKEN`、DeepSeek key 或 Suno key 写入任何提交文件。
 - 不要把 `data/media/`、`exports/` 中的成品音频作为源码提交，除非另行建立明确的 `examples/` 目录并签署用途。
 - 保持 `folia-major/LICENSE` 和上游归属信息。
-

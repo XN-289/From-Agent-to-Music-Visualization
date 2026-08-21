@@ -96,7 +96,7 @@ LLM_MODEL=deepseek-v4-flash
 DEEPSEEK_API_KEY=
 
 SUNO_PROVIDER=musicproxy
-MUSIC_PROXY_BASE_URL=http://114.132.214.9:8800
+MUSIC_PROXY_BASE_URL=http://127.0.0.1:8800
 MUSIC_PROXY_API_KEY=
 MUSIC_PROXY_DEFAULT_PROVIDER=suno_openaihk
 MUSIC_PROXY_MODEL=auto
@@ -134,4 +134,3 @@ folia-major/src/services/electronVideoExport.ts
 - 生成路径当前只写 `lyrics.lrc`，不自动产出 `lyrics.t.lrc`。
 
 推荐下一步：在推送前把带时间轴的翻译嵌入 MP3 metadata，让 Folia 从 `audioFile` 中解析 `translation`-tagged lyrics；或者扩展本地导入/Stage 方案前先验证 `/stage/lyrics` 与 media session 的并存关系。
-

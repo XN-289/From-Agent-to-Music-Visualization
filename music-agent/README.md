@@ -34,7 +34,7 @@ LLM_MODEL=模型id
 # 音乐生成（公司网关优先）：
 SUNO_PROVIDER=musicproxy # mock=本地合成演示 | sunoapi=第三方 | musicproxy=公司网关
 SUNO_API_KEY=xxx         # 使用 sunoapi 时才需要
-MUSIC_PROXY_BASE_URL=http://114.132.214.9:8800
+MUSIC_PROXY_BASE_URL=http://127.0.0.1:8800
 MUSIC_PROXY_API_KEY=xxx  # 公司 music-proxy-service API Key
 MUSIC_PROXY_DEFAULT_PROVIDER=suno_openaihk
 MUSIC_PROXY_MODEL=auto

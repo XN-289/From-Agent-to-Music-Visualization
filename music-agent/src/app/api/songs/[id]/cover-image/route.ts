@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { loadPersistedSong } from '@/lib/media-output';
+import { coverMimeForPath } from '@/lib/media-mime';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   try {
     const bytes = await readFile(bundle.coverPath);
     return new Response(new Uint8Array(bytes), {
-      headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' },
+      headers: { 'Content-Type': coverMimeForPath(bundle.coverPath), 'Cache-Control': 'public, max-age=3600' },
     });
   } catch {
     return new Response('Not Found', { status: 404 });

@@ -33,9 +33,9 @@ pnpm dev
 ```env
 DEEPSEEK_API_KEY=...
 
-# 本机实际配置：sunoapi（真实）+ mock（免费演示）
-SUNO_PROVIDER=sunoapi
-MUSIC_PROXY_BASE_URL=http://114.132.214.9:8800
+# 本机实际配置：musicproxy（公司统一网关，默认）+ mock（免费演示）
+SUNO_PROVIDER=musicproxy
+MUSIC_PROXY_BASE_URL=http://127.0.0.1:8800
 MUSIC_PROXY_API_KEY=...
 MUSIC_PROXY_DEFAULT_PROVIDER=suno_openaihk
 MUSIC_PROXY_MODEL=auto

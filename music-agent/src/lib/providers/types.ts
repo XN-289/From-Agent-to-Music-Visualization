@@ -32,6 +32,8 @@ export interface SongVariant {
   durationSec: number;
   /** Provider 原生音频 id（extend/cover 等迭代操作的输入） */
   audioId?: string;
+  /** Provider 生成封面 URL；持久化时优先下载，失败则回退本地渐变封面 */
+  imageUrl?: string;
 }
 
 export interface GenerateMusicInput {

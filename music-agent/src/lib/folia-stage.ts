@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { LoadedSongBundle } from '@/lib/media-output';
+import { audioMimeForPath, coverMimeForPath } from '@/lib/media-mime';
 import { embedSongMetadata } from '@/lib/mp3-metadata';
 
 export interface FoliaStageHealth {
@@ -105,10 +106,11 @@ export async function pushSongToFolia(bundle: LoadedSongBundle): Promise<FoliaSt
   form.append('artist', 'Music Agent');
   form.append('album', 'Music Agent');
   form.append('lyricsFormat', 'lrc');
-  form.append('audioFile', await toFilePart(audio.path, 'audio/mpeg', `${bundle.title}.${audio.path.split('.').pop() ?? 'mp3'}`));
+  form.append('audioFile', await toFilePart(audio.path, audioMimeForPath(audio.path), `${bundle.title}.${audio.path.split('.').pop() ?? 'mp3'}`));
   form.append('lyricsFile', await toFilePart(bundle.lyricsLrcPath, 'text/plain; charset=utf-8', `${bundle.title}.lrc`));
   if (bundle.coverPath) {
-    form.append('coverFile', await toFilePart(bundle.coverPath, 'image/png', `${bundle.title}-cover.png`));
+    const coverExt = bundle.coverPath.split('.').pop() ?? 'png';
+    form.append('coverFile', await toFilePart(bundle.coverPath, coverMimeForPath(bundle.coverPath), `${bundle.title}-cover.${coverExt}`));
   }
 
   try {

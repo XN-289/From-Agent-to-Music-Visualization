@@ -1,6 +1,6 @@
 # PROJECT_STATE
 
-Updated: 2026-08-21 19:49
+Updated: 2026-08-21 19:52
 Current phase: implementation / verification
 
 ## 一句话现状
@@ -12,7 +12,7 @@ Current phase: implementation / verification
 - `music-agent` 的 `pnpm install --frozen-lockfile`、`pnpm db:push`、`pnpm lint`、`pnpm build` 均已完成；本轮 lint 为 0 error，build 通过但保留既有动态文件系统 tracing warnings。来源：本轮命令结果。
 - `folia-major` 的 `npm ci`、`npm run typecheck` 已通过；测试 1614 passed、1 skipped，唯一失败是 `test/unit/lyrics/architecture.test.ts` 冷启动超时，单跑通过。来源：上一轮验证记录。
 - Stage 上传的 `audioFile` 会写入当前 session working directory，`cleanupInactiveStageSessions()` 会把 `stageActiveSessionId` 加入保留集合，因此活动媒体文件在会话切换前不会被提前删除。来源：`folia-major/electron/stageApi.cjs`。
-- 本轮 mock 验收使用 `http://127.0.0.1:3002` 的隔离 Music Agent 与 `http://127.0.0.1:32107` 的临时 Stage；验收结束后这些临时服务均已停止，正式使用需按手册重新启动。来源：本轮 mock 验收与进程清理。
+- Task 9 mock 验收使用 `http://127.0.0.1:3002` 的隔离 Music Agent 与 `http://127.0.0.1:32107` 的临时 Stage，验收后已清理；本轮端到端复验时 3001 / 3002 / 32107 均可访问。来源：本轮命令结果。
 - 真实生成走公司统一音乐代理 `musicproxy`，`.env.local` 已配置 `SUNO_PROVIDER=musicproxy`；公司网关鉴权头为 `Authorization: <MUSIC_PROXY_API_KEY>`，不带 `Bearer`。来源：本轮验证与 `musicproxy.ts`。
 - 封面优先下载公司网关返回的 `image_url`，失败或缺失时回退本地渐变 PNG。来源：本轮 `media-output.ts` 修改。
 - Folia dev 冷启动时，动态加载的 bootstrap 依赖图完成编译前 `#root` 会保持为空；用户看到的“没有东西”是该窗口内的空白状态。来源：本轮 `http://127.0.0.1:3001/` 浏览器实测与 `src/index.tsx` 动态 import 链路。
@@ -48,12 +48,11 @@ Current phase: implementation / verification
 - P1 — Mock 歌词短输入仍按均分时间轴，不是词级对齐；真实后端可优先使用 `getTimestampedLyrics`。来源：`music-agent/src/app/api/jobs/[id]/route.ts`。
 - P1 — Agent 系统提示词在模块加载时一次性拼入全部 harness 文件，token 成本偏高；当前未做按阶段动态加载。来源：`music-agent/src/lib/agent/prompt.ts`。
 - P2 — Next build 仍报告 `media-output.ts` 的动态文件系统 tracing warnings；当前不影响单机自用，但未来若部署需收窄路径或加 ignore 标记。
-- 注意 — `music-agent/drizzle.config.ts` 与 `music-agent/src/lib/db/index.ts` 有上一轮未提交修改，本轮未改动，也未提交。
 
 ## 下一步
 1. 用户打开 `http://127.0.0.1:3001/`，确认冷启动首屏可见 `Folia / 正在启动...`，随后完整界面出现。
 2. 用户查看两段本地导出视频，确认歌词、封面和横竖屏画面符合预期。
-3. 全部确认后合并 `feat/pipeline-complete-experience` 回 `main`。
+3. 如画面或视频需调整，基于用户目视反馈继续迭代；无需调整则本轮交付闭环。
 
 ## 恢复上下文
 - 仓库根目录：`D:\从Agent到音乐可视化`

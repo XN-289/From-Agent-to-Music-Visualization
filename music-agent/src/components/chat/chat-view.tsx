@@ -8,7 +8,7 @@ import { GenerationCard } from "./generation-card";
 import { AssistantMessageText } from "./direction-options";
 import { ParamsPanel, hasParams, paramsSummary, type PanelParams } from "./params-panel";
 import { SongCard, type SongCardData } from "@/components/song/song-card";
-import { coverGradient } from "@/lib/cover";
+import { coverGradient } from "@/lib/cover-theme";
 import { cn } from "@/lib/utils";
 
 // 场景入口：来自 harness 场景库（对标海绵「精选/创作」+ Suno 快捷入口结构）

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePlayerStore } from "@/components/player/player-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { coverGradient } from "@/lib/cover";
+import { coverGradient } from "@/lib/cover-theme";
 import { Music2, Pause, Play } from "lucide-react";
 
 export interface SongCardData {
@@ -32,6 +32,16 @@ export function SongCard({ song }: { song: SongCardData }) {
         <div
           className={`relative flex aspect-square items-center justify-center bg-gradient-to-br ${coverGradient(song.title)}`}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/songs/${song.id}/cover-image`}
+            alt={song.title}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
           <Music2 className="h-10 w-10 text-white/80" />
           {song.status === "processing" && (
             <Badge className="absolute left-2 top-2 bg-white/90 text-foreground">{song.progress}%</Badge>

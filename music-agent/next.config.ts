@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // 统一走 serverExternalPackages（Node 运行时原生加载）
   serverExternalPackages: [
     'better-sqlite3',
+    '@resvg/resvg-js',
     '@earendil-works/pi-agent-core',
     '@earendil-works/pi-coding-agent',
     '@earendil-works/pi-ai',

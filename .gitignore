@@ -20,6 +20,7 @@ test-results/
 music-agent/data/
 music-agent/exports/
 music-agent/public/generated/
+/exports/
 
 # Tooling and OS noise
 *.tsbuildinfo
@@ -27,4 +28,3 @@ music-agent/public/generated/
 Thumbs.db
 .idea/
 .vscode/
-

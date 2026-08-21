@@ -1,7 +1,10 @@
 import { Buffer } from 'buffer';
 import { installGlobalVisualizerFrameRateLimiter } from './utils/frameRateLimiter';
+import { showBootError, showBootPlaceholder } from './bootPlaceholder';
+
 // @ts-ignore
 globalThis.Buffer = Buffer;
 installGlobalVisualizerFrameRateLimiter();
+showBootPlaceholder();
 
-void import('./bootstrap');
+import('./bootstrap').catch(showBootError);

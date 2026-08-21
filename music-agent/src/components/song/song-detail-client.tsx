@@ -303,44 +303,29 @@ export function SongDetailClient({
             <Button
               variant="outline"
               size="sm"
-              disabled={song.status !== "done" || busy !== null}
-              onClick={() => setExtendOpen(true)}
-              title="向后延续歌曲"
+              disabled
+              title="当前公司音乐代理不支持 Extend，暂不可用"
             >
-              {busy === "extend" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Wand2 className="h-3.5 w-3.5" />
-              )}
-              Extend
+              <Wand2 className="h-3.5 w-3.5" />
+              Extend 暂不可用
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={song.status !== "done" || busy !== null}
-              onClick={() => setCoverOpen(true)}
-              title="换个风格重新演绎"
+              disabled
+              title="当前公司音乐代理不支持 Cover / Remix，暂不可用"
             >
-              {busy === "cover" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Layers className="h-3.5 w-3.5" />
-              )}
-              Cover / Remix
+              <Layers className="h-3.5 w-3.5" />
+              Cover / Remix 暂不可用
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={song.status !== "done" || busy !== null}
-              onClick={() => setReplaceOpen(true)}
-              title="替换歌曲中的某一段"
+              disabled
+              title="当前公司音乐代理不支持替换段落，暂不可用"
             >
-              {busy === "replace" ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Scissors className="h-3.5 w-3.5" />
-              )}
-              替换段落
+              <Scissors className="h-3.5 w-3.5" />
+              替换段落 暂不可用
             </Button>
             <Button
               variant="outline"

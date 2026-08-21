@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LyricsLine } from '@/lib/audio/lrc';
+import { renderCoverPng } from '@/lib/cover';
 import type { SongVariant } from '@/lib/providers/types';
 
 export interface PersistSongInput {
@@ -13,6 +14,7 @@ export interface PersistSongInput {
   providerId: string;
   variants: SongVariant[];
   lrc: LyricsLine[];
+  tLrc: LyricsLine[];
 }
 
 export interface PersistedSongBundle {
@@ -21,6 +23,8 @@ export interface PersistedSongBundle {
   metaPath: string;
   lyricsTxtPath: string;
   lyricsLrcPath: string;
+  lyricsTLrcPath: string | null;
+  coverPath: string | null;
   audioPaths: Array<{ variantId: string; path: string; url: string }>;
 }
 
@@ -33,6 +37,7 @@ export interface LoadedSongBundle extends PersistedSongBundle {
   providerId: string;
   variants: SongVariant[];
   lrc: LyricsLine[];
+  tLrc: LyricsLine[];
 }
 
 function mediaRoot(): string {
@@ -62,21 +67,46 @@ export function lyricsToLrc(lines: LyricsLine[]): string {
 }
 
 async function downloadFile(url: string, destination: string): Promise<void> {
-  const res = await fetch(url);
+  const localPath = localPublicPathForUrl(url);
+  if (localPath) {
+    try {
+      const bytes = await readFile(localPath);
+      await writeFile(destination, bytes);
+      return;
+    } catch (error) {
+      console.warn(
+        `[media-output] 本地公开目录读取失败，改为 HTTP 下载 ${url}:`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
+  const resolvedUrl = resolveAudioUrl(url);
+  const res = await fetch(resolvedUrl);
   if (!res.ok) throw new Error(`下载失败（HTTP ${res.status}）`);
   const bytes = Buffer.from(await res.arrayBuffer());
   await writeFile(destination, bytes);
 }
 
 function extensionForUrl(url: string): string {
-  try {
-    const pathname = new URL(url).pathname.toLowerCase();
-    const match = pathname.match(/\.(mp3|wav|flac|m4a)(?:$|[?#])/);
-    if (match) return match[1];
-  } catch {
-    // 保持默认 mp3
-  }
+  const pathname = url.split(/[?#]/, 1)[0].toLowerCase();
+  const match = pathname.match(/\.(mp3|wav|flac|m4a)$/);
+  if (match) return match[1];
   return 'mp3';
+}
+
+function localPublicPathForUrl(url: string): string | null {
+  if (!url.startsWith('/')) return null;
+  const pathname = url.split(/[?#]/, 1)[0];
+  return path.join(process.cwd(), 'public', pathname);
+}
+
+function resolveAudioUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  const configuredOrigin = process.env.MUSIC_AGENT_ORIGIN?.trim().replace(/\/$/, '');
+  if (configuredOrigin) return `${configuredOrigin}${url.startsWith('/') ? url : `/${url}`}`;
+  const port = process.env.PORT?.trim() || '3000';
+  return `http://127.0.0.1:${port}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 export async function persistGeneratedSong(input: PersistSongInput): Promise<PersistedSongBundle> {
@@ -103,11 +133,15 @@ export async function persistGeneratedSong(input: PersistSongInput): Promise<Per
   const lyricsLrc = lyricsToLrc(input.lrc);
   const lyricsTxtPath = path.join(directory, 'lyrics.txt');
   const lyricsLrcPath = path.join(directory, 'lyrics.lrc');
+  const lyricsTLrcPath = input.tLrc.length ? path.join(directory, 'lyrics.t.lrc') : null;
   const metaPath = path.join(directory, 'meta.json');
 
   await Promise.all([
     writeFile(lyricsTxtPath, lyricsTxt, 'utf8'),
     writeFile(lyricsLrcPath, lyricsLrc, 'utf8'),
+    lyricsTLrcPath
+      ? writeFile(lyricsTLrcPath, lyricsToLrc(input.tLrc), 'utf8')
+      : Promise.resolve(),
     writeFile(
       metaPath,
       JSON.stringify(
@@ -121,6 +155,7 @@ export async function persistGeneratedSong(input: PersistSongInput): Promise<Per
           prompt: input.prompt,
           variants: input.variants,
           lrc: input.lrc,
+          tLrc: input.tLrc,
           persistedAt: new Date().toISOString(),
         },
         null,
@@ -130,12 +165,26 @@ export async function persistGeneratedSong(input: PersistSongInput): Promise<Per
     ),
   ]);
 
+  // 封面：本地渐变渲染；失败不阻塞主流程（UI 与推送均有兜底）
+  const coverPath = path.join(directory, 'cover.png');
+  try {
+    await renderCoverPng({
+      title: input.title,
+      styleTags: input.styleTags ?? [],
+      outPath: coverPath,
+    });
+  } catch (e) {
+    console.warn('[media-output] 封面渲染失败:', e instanceof Error ? e.message : String(e));
+  }
+
   return {
     songId: input.songId,
     directory,
     metaPath,
     lyricsTxtPath,
     lyricsLrcPath,
+    lyricsTLrcPath,
+    coverPath,
     audioPaths,
   };
 }
@@ -154,6 +203,7 @@ export async function loadPersistedSong(songId: string): Promise<LoadedSongBundl
       providerId?: string;
       variants?: SongVariant[];
       lrc?: LyricsLine[];
+      tLrc?: LyricsLine[];
     };
     const files = await readdir(directory);
     const audioPaths = files
@@ -170,6 +220,8 @@ export async function loadPersistedSong(songId: string): Promise<LoadedSongBundl
       metaPath,
       lyricsTxtPath: path.join(directory, 'lyrics.txt'),
       lyricsLrcPath: path.join(directory, 'lyrics.lrc'),
+      lyricsTLrcPath: files.includes('lyrics.t.lrc') ? path.join(directory, 'lyrics.t.lrc') : null,
+      coverPath: files.includes('cover.png') ? path.join(directory, 'cover.png') : null,
       audioPaths,
       title: meta.title ?? 'Untitled',
       lyrics: meta.lyrics ?? null,
@@ -179,6 +231,7 @@ export async function loadPersistedSong(songId: string): Promise<LoadedSongBundl
       providerId: meta.providerId ?? '',
       variants: meta.variants ?? [],
       lrc: meta.lrc ?? [],
+      tLrc: meta.tLrc ?? [],
     };
   } catch {
     return null;

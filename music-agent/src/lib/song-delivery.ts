@@ -36,6 +36,15 @@ export async function ensureLocalSong(songId: string): Promise<LoadedSongBundle 
     }
   }
 
+  let tLrc: LyricsLine[] = [];
+  if (song.lyricsTlrc) {
+    try {
+      tLrc = JSON.parse(song.lyricsTlrc) as LyricsLine[];
+    } catch {
+      tLrc = [];
+    }
+  }
+
   const job = (
     await db.select().from(schema.generationJobs).where(eq(schema.generationJobs.songId, songId))
   )[0];
@@ -50,6 +59,7 @@ export async function ensureLocalSong(songId: string): Promise<LoadedSongBundle 
     providerId: job?.providerId ?? '',
     variants: song.variants,
     lrc,
+    tLrc,
   });
 
   return loadPersistedSong(songId);

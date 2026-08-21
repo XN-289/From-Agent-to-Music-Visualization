@@ -4,16 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test": "vitest run"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@earendil-works/pi-agent-core": "^0.84.2",
     "@earendil-works/pi-ai": "^0.84.2",
     "@earendil-works/pi-coding-agent": "^0.84.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@sinclair/typebox": "^0.34.52",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
@@ -22,6 +24,7 @@
     "lucide-react": "^1.31.0",
     "next": "16.3.1",
     "next-themes": "^0.4.6",
+    "node-id3": "^0.2.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sonner": "^2.0.8",
@@ -38,9 +41,11 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "music-metadata": "^11.15.0",
     "shadcn": "^4.18.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@11.7.0"
 }

@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { desc, eq, like, or } from 'drizzle-orm';
 import { getProvider } from '@/lib/providers';
 import { db, schema } from '@/lib/db';
+import { stripTranslationLines } from '@/lib/audio/lrc';
 
 export interface SubmitGenerationInput {
   title: string;
@@ -19,9 +20,11 @@ export interface SubmitGenerationInput {
 export async function submitGeneration(input: SubmitGenerationInput) {
   const provider = getProvider();
   const songId = crypto.randomUUID();
+  // 提交 Suno 前剥离翻译行（DB 保留完整歌词，翻译行用于 t.lrc 与 Folia 副字幕）
+  const providerLyrics = stripTranslationLines(input.lyrics);
   const { jobId } = await provider.generateMusic({
     title: input.title,
-    lyrics: input.lyrics,
+    lyrics: providerLyrics,
     styleTags: input.styleTags,
     prompt: input.prompt,
     instrumental: input.instrumental ?? false,

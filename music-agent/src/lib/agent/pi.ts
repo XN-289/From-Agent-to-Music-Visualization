@@ -25,6 +25,7 @@ import {
 import { Type } from '@sinclair/typebox';
 import { getProvider } from '@/lib/providers';
 import { SYSTEM_PROMPT } from './prompt';
+import { stripTranslationLines } from '@/lib/audio/lrc';
 import {
   commitIteration,
   getSongForAgent,
@@ -187,7 +188,7 @@ const replaceSectionToolDef = defineTool({
       title: `${song.title} (Edit)`,
       infillStartS: params.infillStartS,
       infillEndS: params.infillEndS,
-      fullLyrics: song.lyrics ?? '',
+      fullLyrics: stripTranslationLines(song.lyrics ?? ''),
     });
     const { songId } = await commitIteration(
       params.songId,

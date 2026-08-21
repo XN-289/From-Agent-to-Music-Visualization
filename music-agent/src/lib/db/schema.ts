@@ -31,6 +31,8 @@ export const songs = sqliteTable(
     lyrics: text('lyrics'),
     /** 逐行时间戳歌词（JSON: LyricsLine[]），由任务完成时按实际时长生成 */
     lyricsLrc: text('lyrics_lrc'),
+    /** 逐行翻译时间戳歌词（JSON: LyricsLine[]），主/翻共轴；无翻译为 null */
+    lyricsTlrc: text('lyrics_tlrc'),
     styleTags: text('style_tags', { mode: 'json' }).$type<string[]>(),
     prompt: text('prompt'),
     instrumental: integer('instrumental', { mode: 'boolean' }).notNull().default(false),

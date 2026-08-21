@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/lib/db';
 import { getProvider } from '@/lib/providers';
-import { makeLrc, parseLyricLines, type LyricsLine } from '@/lib/audio/lrc';
+import { buildTranslationLines, makeLrc, parseLyricLines, type LyricsLine } from '@/lib/audio/lrc';
 import { checkRateLimit, clientIp } from '@/lib/rate-limit';
 import { queueAutoDelivery } from '@/lib/song-delivery';
 
@@ -57,6 +57,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           if (lrc.length === 0 && durationSec > 0) {
             lrc = makeLrc(parseLyricLines(songRow.lyrics ?? ''), durationSec);
           }
+          // 翻译共轴：主歌词行序映射（真实对齐优先；行数不一致按 min 截断，Task 10 验收核对）
+          const tLrc = lrc.length
+            ? buildTranslationLines(songRow.lyrics ?? '', lrc)
+            : [];
           // 守卫更新：仅当仍是 processing 时落库（并发轮询下只完成一次）
           await db
             .update(schema.songs)
@@ -66,6 +70,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
               stage: job.stage,
               variants: job.result,
               lyricsLrc: lrc.length ? JSON.stringify(lrc) : null,
+              lyricsTlrc: tLrc.length ? JSON.stringify(tLrc) : null,
               error: null,
               updatedAt: now,
             })

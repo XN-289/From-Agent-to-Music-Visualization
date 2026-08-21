@@ -4,11 +4,14 @@
 // 规则断言是确定性的硬指标（禁止过早生成/必须有澄清/迭代不调错工具）；
 // LLM-judge 只用于主观质量（方向选项与场景的贴合度），锚定 0-5 rubric。
 // 退出码：任何硬断言失败 = 1（可接 CI）。
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const BASE = process.env.EVAL_BASE ?? "http://localhost:3000";
 const JUDGE_MODEL = process.env.JUDGE_MODEL ?? "qwen2.5vl:3b";
+const RUN_ID = randomUUID().slice(0, 8);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // 从 .env.local 读 DeepSeek key（裁判用），不打印
 function loadEnv() {
@@ -141,7 +144,7 @@ async function main() {
 
   for (let i = 0; i < CASES.length; i++) {
     const c = CASES[i];
-    const { text, tools } = await runChat(c.text, `eval-${c.id}`);
+    const { text, tools } = await runChat(c.text, `eval-${RUN_ID}-${c.id}`);
     const results = c.asserts.map((a) => ({ assert: a, ...checkAssert(a, { text, tools }) }));
     const failed = results.filter((r) => !r.pass);
     if (failed.length) hardFail += 1;
@@ -162,6 +165,10 @@ async function main() {
     for (const r of results.filter((x) => x.pass)) {
       if (r.detail) console.log(`     ✓ ${r.assert}（${r.detail}）`);
     }
+
+    // 服务端 chat 限流 12 次/分钟；按 5.2s 间隔串行铺开 14 条请求，
+    // 避免最后一个 case 撞 429，同时不降低零成本 mock 评测的可重复性。
+    if (i < CASES.length - 1) await sleep(5200);
   }
 
   const passRate = Math.round(((CASES.length - hardFail) / CASES.length) * 100);

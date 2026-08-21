@@ -22,6 +22,19 @@ export interface DirectionSegment {
 
 const MARKER_RE = /^\*{0,2}\s*([①②③④⑤⑥⑦⑧]|\d{1,2}[.、])\s*\*{0,2}/;
 
+// 澄清问题识别：Agent 需求澄清时也会用 ①②③ 列表（如「①你想要什么语种？②给谁/什么场合？」），
+// 这类块不是方向选项，绝不能渲染成可点击卡片——否则用户点击会把问题当选项发出去。
+// 方向选项是陈述性建议（风格名 + 画面描述），疑问块一律回退纯文本渲染。
+const QUESTION_RE = /[？?]$|[吗呢]$|^(什么|哪个|哪种|怎么|为什么|要不要|想要|希望|是否|几点|多少|给谁|什么场合)/;
+
+function looksLikeQuestion(title: string, body: string): boolean {
+  const probe = [title.trim(), body.trim()].filter(Boolean).join(' ');
+  if (QUESTION_RE.test(probe)) return true;
+  // 整块由短疑问行组成（连续两个以上问句）时也判定为问题列表
+  const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+  return lines.length >= 2 && lines.every((l) => QUESTION_RE.test(l));
+}
+
 function parseOptionBlock(raw: string): DirectionOption | null {
   const m = raw.trim().match(MARKER_RE);
   if (!m) return null;
@@ -29,6 +42,9 @@ function parseOptionBlock(raw: string): DirectionOption | null {
   const lines = withoutMarker.split("\n");
   // 标题行可能带 markdown 加粗（**① 慢民谣**（…））——直接清掉所有 * 再解析
   const titleRaw = lines[0].replace(/\*/g, "").trim();
+  const body = lines.slice(1).join("\n").trim();
+  // 澄清问题不是方向选项：只回退文本渲染，不让用户点击问题
+  if (looksLikeQuestion(titleRaw, body)) return null;
   const tagsMatch = titleRaw.match(/[（(]([^）)]+)[）)]\s*$/);
   const tags = tagsMatch
     ? tagsMatch[1]
@@ -38,7 +54,7 @@ function parseOptionBlock(raw: string): DirectionOption | null {
     : [];
   const title = tagsMatch ? titleRaw.slice(0, tagsMatch.index).trim() : titleRaw;
   if (!title) return null;
-  return { label: m[1], title, tags, body: lines.slice(1).join("\n").trim() };
+  return { label: m[1], title, tags, body };
 }
 
 /** 空行分段 + 标记行识别；需要 ≥2 个方向块才启用卡片渲染 */

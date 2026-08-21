@@ -28,3 +28,6 @@ music-agent/public/generated/
 Thumbs.db
 .idea/
 .vscode/
+
+# Stage API dev runtime (stage-api-dev.cjs)
+folia-major/.stage-api-dev/

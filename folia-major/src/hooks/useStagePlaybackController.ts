@@ -40,6 +40,16 @@ import type {
 
 // src/hooks/useStagePlaybackController.ts
 
+// Web 版 Stage API 接入（无 Electron 桥时走纯 HTTP 轮询）。
+// 由 folia-major/.env.local 注入：VITE_STAGE_API_BASE_URL / VITE_STAGE_API_TOKEN，
+// 与 stage-api-dev.cjs --sync-env 写入 music-agent/.env.local 的是同一个 token。
+const WEB_STAGE_API_BASE_URL =
+    typeof import.meta !== 'undefined' ? (import.meta.env.VITE_STAGE_API_BASE_URL as string | undefined) : undefined;
+const WEB_STAGE_API_TOKEN =
+    typeof import.meta !== 'undefined' ? (import.meta.env.VITE_STAGE_API_TOKEN as string | undefined) : undefined;
+const WEB_STAGE_API_POLL_INTERVAL_MS = 2000;
+const webStageApiConfigured = Boolean(WEB_STAGE_API_BASE_URL && WEB_STAGE_API_TOKEN);
+
 type SetState<T> = Dispatch<SetStateAction<T>>;
 
 type UseStagePlaybackControllerParams = {
@@ -206,7 +216,9 @@ export function useStagePlaybackController({
     const stageMediaSession = stageStatus?.mediaSession ?? null;
     const stageSource: StageSource | null = isElectronWindow
         ? (stageStatus?.modeEnabled ? (stageStatus?.source ?? 'stage-api') : null)
-        : (enablePlayerCapStage ? 'playercap' : (enableNowPlayingStage ? 'now-playing' : null));
+        : (webStageApiConfigured && stageStatus?.modeEnabled
+            ? 'stage-api'
+            : (enablePlayerCapStage ? 'playercap' : (enableNowPlayingStage ? 'now-playing' : null)));
     const isNowPlayingStageActive = activePlaybackContext === 'stage' && stageSource === 'now-playing';
     const shouldPublishNowPlayingState = isDev || isNowPlayingStageActive;
     shouldPublishNowPlayingStateRef.current = shouldPublishNowPlayingState;
@@ -1036,31 +1048,66 @@ export function useStagePlaybackController({
     }, []);
 
     useEffect(() => {
-        if (!window.electron?.getStageStatus) {
+        if (isElectronWindow) {
+            if (!window.electron?.getStageStatus) {
+                return;
+            }
+
+            let disposed = false;
+
+            const syncStageStatus = (nextStatus: StageStatus) => {
+                if (!disposed) {
+                    setStageStatus(nextStatus);
+                }
+            };
+
+            window.electron.getStageStatus().then(syncStageStatus).catch((error) => {
+                console.warn('[Stage] Failed to load stage status', error);
+            });
+
+            const unsubscribeUpdated = window.electron.onStageSessionUpdated?.(syncStageStatus);
+            const unsubscribeCleared = window.electron.onStageSessionCleared?.(syncStageStatus);
+
+            return () => {
+                disposed = true;
+                unsubscribeUpdated?.();
+                unsubscribeCleared?.();
+            };
+        }
+
+        // Web 版：没有 Electron 桥，直接轮询本地 Stage API（纯 HTTP + CORS）。
+        if (!webStageApiConfigured) {
             return;
         }
 
         let disposed = false;
+        const baseUrl = WEB_STAGE_API_BASE_URL!.replace(/\/+$/, '');
 
-        const syncStageStatus = (nextStatus: StageStatus) => {
-            if (!disposed) {
-                setStageStatus(nextStatus);
+        const pollStageStatus = async () => {
+            try {
+                const res = await fetch(`${baseUrl}/stage/status`, {
+                    headers: { Authorization: `Bearer ${WEB_STAGE_API_TOKEN}` },
+                });
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                const nextStatus = (await res.json()) as StageStatus;
+                if (!disposed) {
+                    setStageStatus(nextStatus);
+                }
+            } catch {
+                // Stage 服务未就绪或鉴权未生效时静默重试，界面保持等待态。
             }
         };
 
-        window.electron.getStageStatus().then(syncStageStatus).catch((error) => {
-            console.warn('[Stage] Failed to load stage status', error);
-        });
-
-        const unsubscribeUpdated = window.electron.onStageSessionUpdated?.(syncStageStatus);
-        const unsubscribeCleared = window.electron.onStageSessionCleared?.(syncStageStatus);
+        void pollStageStatus();
+        const timer = window.setInterval(() => void pollStageStatus(), WEB_STAGE_API_POLL_INTERVAL_MS);
 
         return () => {
             disposed = true;
-            unsubscribeUpdated?.();
-            unsubscribeCleared?.();
+            window.clearInterval(timer);
         };
-    }, []);
+    }, [isElectronWindow]);
 
     useEffect(() => {
         if (stageSource !== 'stage-api' || activePlaybackContext !== 'main') {

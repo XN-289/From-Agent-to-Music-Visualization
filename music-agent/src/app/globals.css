@@ -59,6 +59,15 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Tailwind 4 的 border 类默认用 currentColor；不重置的话所有边框渲染成文字色纯黑
+   （2026-08-22 实测：对话页底部输入框显示为「浏览器 tab 框」式纯黑描边）。
+   shadcn 模板标配的 base 层：边框统一走 --color-border。 */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}
+
 ::selection {
   background: color-mix(in oklab, var(--primary) 30%, transparent);
 }

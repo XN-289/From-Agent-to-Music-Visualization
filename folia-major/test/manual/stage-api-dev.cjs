@@ -42,6 +42,27 @@ function updateEnvToken(musicAgentRoot, token) {
   fs.writeFileSync(envPath, next, 'utf8');
 }
 
+// 同步到 Folia web dev 的 Vite env，让网页版（无 Electron 桥）也能用同一个 token 轮询 Stage API。
+function updateFoliaWebEnvToken(foliaRoot, token) {
+  const envPath = path.join(foliaRoot, '.env.local');
+  if (!fs.existsSync(envPath)) {
+    console.warn(`[stage-api-dev] skip folia env sync: missing ${envPath}`);
+    return;
+  }
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  const baseKey = 'VITE_STAGE_API_BASE_URL=';
+  const tokenKey = 'VITE_STAGE_API_TOKEN=';
+  let next = content;
+  if (!next.includes(baseKey)) {
+    next = `${next.replace(/\s*$/, '\n')}${baseKey}http://127.0.0.1:32107\n`;
+  }
+  next = next.includes(tokenKey)
+    ? next.replace(/^VITE_STAGE_API_TOKEN=.*$/m, `${tokenKey}${token}`)
+    : `${next.replace(/\s*$/, '\n')}${tokenKey}${token}\n`;
+  fs.writeFileSync(envPath, next, 'utf8');
+}
+
 function createMemoryStore(port) {
   const values = new Map();
   values.set('STAGE_API_PORT', port);
@@ -120,6 +141,9 @@ async function main() {
     const musicAgentRoot = path.resolve(__dirname, '..', '..', '..', 'music-agent');
     updateEnvToken(musicAgentRoot, status.token);
     console.log('[stage-api-dev] synced FOLIA_STAGE_TOKEN to music-agent/.env.local');
+    const foliaRoot = path.resolve(__dirname, '..', '..');
+    updateFoliaWebEnvToken(foliaRoot, status.token);
+    console.log('[stage-api-dev] synced VITE_STAGE_API_TOKEN to folia-major/.env.local');
   }
 
   if (!args.smoke) {

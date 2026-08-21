@@ -64,6 +64,29 @@ export function parseLyricPairs(lyrics: string): ParsedLyricPair[] {
   return pairs;
 }
 
+/**
+ * 上游对齐数据共轴到主歌词：上游 get-timestamped-lyrics 返回的是 ASR 级行
+ * （文本与用户写的词有差异、混入 [Verse] 等结构标记行，甚至标记与歌词同行），
+ * 直接展示会「歌词对不上」。行数接近时（差异 ≤ 20% 且至少差 1 行），
+ * 保留上游真实时间戳，文本换回用户写的主歌词行。
+ */
+export function coaxAlignedLyrics(mainLyrics: string, aligned: LyricsLine[]): LyricsLine[] {
+  // 剥掉行内标记前缀（"[Verse 1]\n浴衣の袖を…" → "浴衣の袖を…"），再过滤纯标记行
+  const cleaned = aligned
+    .map((l) => ({ ...l, text: l.text.replace(/^\[[^\]]+\]\s*/m, '').trim() }))
+    .filter((l) => l.text.length > 0 && !/^\s*\[.*\]\s*$/.test(l.text));
+  if (cleaned.length === 0) return aligned;
+  const mainLines = parseLyricLines(mainLyrics);
+  if (mainLines.length === 0) return cleaned;
+  const tolerance = Math.max(1, Math.ceil(mainLines.length * 0.2));
+  if (Math.abs(cleaned.length - mainLines.length) > tolerance) return cleaned;
+  return cleaned.map((a, i) => ({
+    startMs: a.startMs,
+    endMs: a.endMs,
+    text: mainLines[i] ?? a.text,
+  }));
+}
+
 /** 主/翻共轴：主歌词时间轴按行序映射到翻译行，产出 tLrc 行 */
 export function buildTranslationLines(lyrics: string, lrc: LyricsLine[]): LyricsLine[] {
   const pairs = parseLyricPairs(lyrics);

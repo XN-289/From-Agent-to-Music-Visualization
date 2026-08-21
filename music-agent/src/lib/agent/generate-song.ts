@@ -5,6 +5,7 @@ import { desc, eq, like, or } from 'drizzle-orm';
 import { getProvider } from '@/lib/providers';
 import { db, schema } from '@/lib/db';
 import { stripTranslationLines } from '@/lib/audio/lrc';
+import { withLyricLanguageGuard } from '@/lib/audio/lyric-language';
 
 export interface SubmitGenerationInput {
   title: string;
@@ -17,16 +18,23 @@ export interface SubmitGenerationInput {
   duration?: number;
 }
 
-export async function submitGeneration(input: SubmitGenerationInput) {
+export async function submitGeneration(input: SubmitGenerationInput, chatId?: string) {
   const provider = getProvider();
   const songId = crypto.randomUUID();
   // 提交 Suno 前剥离翻译行（DB 保留完整歌词，翻译行用于 t.lrc 与 Folia 副字幕）
   const providerLyrics = stripTranslationLines(input.lyrics);
+  // 语言守卫：日文歌词强制注入语言标签与演唱语言（sunoapi custom 模式 prompt 不生效，
+  // 只能靠 styleTags；musicproxy 走 prompt，两边都注入）
+  const { styleTags, prompt } = withLyricLanguageGuard(
+    input.styleTags,
+    input.prompt,
+    providerLyrics,
+  );
   const { jobId } = await provider.generateMusic({
     title: input.title,
     lyrics: providerLyrics,
-    styleTags: input.styleTags,
-    prompt: input.prompt,
+    styleTags,
+    prompt,
     instrumental: input.instrumental ?? false,
     referenceAudioUrl: input.referenceAudioUrl,
     model: input.model,
@@ -40,6 +48,7 @@ export async function submitGeneration(input: SubmitGenerationInput) {
     tx.insert(schema.songs)
       .values({
         id: songId,
+        chatId: chatId ?? null, // 会话归属：确认 gate 依赖此字段判断「本对话是否已有歌曲」
         title: input.title,
         lyrics: input.lyrics,
         styleTags: input.styleTags,

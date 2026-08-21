@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { GenerationCard } from "./generation-card";
 import { AssistantMessageText } from "./direction-options";
 import { ParamsPanel, hasParams, paramsSummary, type PanelParams } from "./params-panel";
@@ -31,6 +32,7 @@ interface ToolMsg {
   songId?: string;
   title: string;
   isError?: boolean;
+  errorText?: string;
 }
 
 interface ChatMsg {
@@ -308,6 +310,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
               const d = data as {
                 result?: { jobId?: string; songId?: string };
                 isError?: boolean;
+                errorText?: string;
               };
               setMessages((prev) =>
                 prev.map((m) =>
@@ -319,6 +322,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                           jobId: d.result?.jobId,
                           songId: d.result?.songId,
                           isError: d.isError,
+                          errorText: d.errorText,
                         },
                       }
                     : m,
@@ -364,7 +368,11 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
-    if (!text || sending) return;
+    if (!text || sending) {
+      // 模型回复期间按 Enter：给出明确反馈，而不是静默吞掉输入
+      if (text && sending) toast.info("上一条还在回复中，请稍等它写完");
+      return;
+    }
     setInput("");
     void sendPrompt(text);
   }
@@ -556,7 +564,14 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                 {m.tool.jobId && m.tool.songId ? (
                   <GenerationCard jobId={m.tool.jobId} songId={m.tool.songId} title={m.tool.title} />
                 ) : m.tool.isError ? (
-                  <p className="text-sm text-destructive">❌ {m.tool.title} 生成调用失败</p>
+                  m.tool.errorText ? (
+                    // 流程性拦截（如确认 gate）：中性提示，不是系统错误
+                    <p className="text-sm text-muted-foreground">
+                      ⏸ {m.tool.errorText}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-destructive">❌ {m.tool.title} 生成调用失败</p>
+                  )
                 ) : (
                   <p className="animate-pulse text-sm text-muted-foreground">
                     🎼 正在提交生成任务…
@@ -590,7 +605,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
 
       {!isFirst && (
         <form onSubmit={onSubmit} className="sticky bottom-2 mt-6 space-y-3">
-          <div className="rounded-lg border bg-card p-3">
+          <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary/20">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

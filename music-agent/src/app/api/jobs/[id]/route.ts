@@ -1,7 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/lib/db';
 import { getProvider } from '@/lib/providers';
-import { buildTranslationLines, makeLrc, parseLyricLines, type LyricsLine } from '@/lib/audio/lrc';
+import {
+  buildTranslationLines,
+  coaxAlignedLyrics,
+  makeLrc,
+  parseLyricLines,
+  type LyricsLine,
+} from '@/lib/audio/lrc';
 import { checkRateLimit, clientIp } from '@/lib/rate-limit';
 import { queueAutoDelivery } from '@/lib/song-delivery';
 
@@ -50,7 +56,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
               jobRow.id,
               job.result[0].audioId ?? '',
             );
-            if (aligned && aligned.length > 0) lrc = aligned;
+            // 共轴：上游 ASR 行（文本漂移/混入结构标记）→ 用户写的主歌词文本 + 真实时间戳
+            if (aligned && aligned.length > 0) {
+              lrc = coaxAlignedLyrics(songRow.lyrics ?? '', aligned);
+            }
           } catch {
             // 回退
           }

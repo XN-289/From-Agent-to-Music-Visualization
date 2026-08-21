@@ -16,6 +16,17 @@ interface ToolRecord {
   jobId?: string;
   songId?: string;
   isError?: boolean;
+  errorText?: string;
+}
+
+/** 工具失败时从 pi 结果里提取可读说明（gate 拦截文案会随 toolResult 返回） */
+function extractToolErrorText(result: unknown): string | undefined {
+  const r = result as { content?: Array<{ type?: string; text?: string }> } | undefined;
+  const texts = (r?.content ?? [])
+    .filter((c): c is { type: string; text: string } => c?.type === 'text' && typeof c.text === 'string')
+    .map((c) => c.text);
+  const joined = texts.join(' ').trim();
+  return joined.length > 0 ? joined.slice(0, 300) : undefined;
 }
 
 // pi Agent SSE 桥：POST { text, chatId } → queuePrompt()（串行化，防事件串流），
@@ -206,15 +217,22 @@ export async function POST(req: Request) {
                 jobId?: string;
                 songId?: string;
               };
+              // 工具失败时的说明文本（如确认 gate 的拦截原因）：
+              // 透传给前端区分「流程性拦截」与「真实失败」，避免一律渲染成红字报错。
+              const errorText = ev.isError
+                ? extractToolErrorText(ev.result)
+                : undefined;
               if (rec) {
                 rec.jobId = details?.jobId;
                 rec.songId = details?.songId;
                 rec.isError = ev.isError;
+                rec.errorText = errorText;
               }
               send('tool_end', {
                 toolName: ev.toolName,
                 result: details,
                 isError: ev.isError,
+                errorText,
               });
             }
             break;

@@ -26,6 +26,8 @@ import { Type } from '@sinclair/typebox';
 import { getProvider } from '@/lib/providers';
 import { SYSTEM_PROMPT } from './prompt';
 import { stripTranslationLines } from '@/lib/audio/lrc';
+import { db, schema } from '@/lib/db';
+import { and, desc, eq } from 'drizzle-orm';
 import {
   commitIteration,
   getSongForAgent,
@@ -66,16 +68,20 @@ const generateMusicToolDef = defineTool({
   }),
   execute: async (_toolCallId, params) => {
     spendPaidCallBudget(); // 付费调用预算：防注入批量烧钱
-    const { jobId, songId } = await submitGeneration({
-      title: params.title,
-      lyrics: params.lyrics,
-      styleTags: params.styleTags,
-      prompt: params.prompt,
-      instrumental: params.instrumental ?? false,
-      referenceAudioUrl: params.referenceAudioUrl,
-      model: params.model,
-      duration: params.duration,
-    });
+    assertFirstSongConfirmed(budgetAls.getStore()?.chatId); // 首首歌必须先经用户确认
+    const { jobId, songId } = await submitGeneration(
+      {
+        title: params.title,
+        lyrics: params.lyrics,
+        styleTags: params.styleTags,
+        prompt: params.prompt,
+        instrumental: params.instrumental ?? false,
+        referenceAudioUrl: params.referenceAudioUrl,
+        model: params.model,
+        duration: params.duration,
+      },
+      budgetAls.getStore()?.chatId,
+    );
     return {
       content: [{ type: 'text', text: '生成任务已提交' }],
       details: { jobId, songId },
@@ -443,10 +449,54 @@ function createSession(chatId: string): Promise<AgentSession> {
 
 export const MAX_PAID_CALLS_PER_TURN = 3;
 
-// 付费调用预算：用 AsyncLocalStorage 绑定到「当前 turn」（并发 chat 各算各的）；
+// 付费调用预算 + 确认 gate 上下文：用 AsyncLocalStorage 绑定到「当前 turn」（并发 chat 各算各的）；
 // 万一 ALS 上下文丢失（工具在 pi 内部脱离 prompt 链执行），回落到全局共享计数器兜底。
-const budgetAls = new AsyncLocalStorage<{ calls: number }>();
+const budgetAls = new AsyncLocalStorage<{ calls: number; chatId?: string }>();
 const globalBudget = { calls: 0 };
+
+// ---------- 首次生成确认 gate ----------
+// 根因（2026-08-22 用户实测）：模型把「需求未确认不得生成」的 prompt 门禁当耳旁风，
+// 没等用户点头就调 generate_music，烧掉真实额度。代码级 gate：
+// 一个 chat 的第一首歌，必须是用户明确确认后（短消息 + 确认词）才放行；
+// 已有歌曲的 chat（迭代/修复场景）不受限——用户对已有歌的任何操作天然是明确意图。
+const CONFIRM_RE =
+  /可以|确认|没问题|开始|就选|就它|就这个|就[①②③一二三1-9]|都行|生成吧|制作吧|继续|来吧|走你|^好[的了]?$|^行$|^对$|^嗯+$|^ok!?$/i;
+const CONFIRM_MAX_LEN = 30;
+
+function recentUserText(chatId: string): string {
+  const row = db
+    .select({ content: schema.messages.content })
+    .from(schema.messages)
+    .where(and(eq(schema.messages.chatId, chatId), eq(schema.messages.role, 'user')))
+    .orderBy(desc(schema.messages.createdAt))
+    .limit(1)
+    .all()[0];
+  if (!row) return '';
+  try {
+    const parsed = JSON.parse(row.content) as { text?: string };
+    return parsed.text ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function assertFirstSongConfirmed(chatId: string | undefined): void {
+  if (!chatId) return; // ALS 上下文缺失（理论不可达）：不拦，避免误伤
+  const existing = db
+    .select({ id: schema.songs.id })
+    .from(schema.songs)
+    .where(eq(schema.songs.chatId, chatId))
+    .limit(1)
+    .all();
+  if (existing.length > 0) return; // 该 chat 已有歌曲：迭代/修复场景天然放行
+
+  const text = recentUserText(chatId).trim();
+  const confirmed = text.length <= CONFIRM_MAX_LEN && CONFIRM_RE.test(text);
+  if (confirmed) return;
+  throw new Error(
+    '方案尚未经用户确认：这是本对话的第一首歌，必须先把歌词/方向选项发给用户，等用户明确回复「可以/确认」后再调用 generate_music。',
+  );
+}
 
 /** 当前 chat 是否有一个 turn 正在运行（并发请求直接 409，防止事件串流与重复扣费） */
 export function isPromptRunning(chatId: string): boolean {
@@ -471,7 +521,7 @@ export async function queuePrompt(chatId: string, text: string): Promise<void> {
     globalBudget.calls = 0; // 兜底计数器的重置（ALS 正常时每个 turn 有自己的 store）
     try {
       const session = await entry.sessionPromise;
-      await budgetAls.run({ calls: 0 }, () =>
+      await budgetAls.run({ calls: 0, chatId }, () =>
         session.prompt(text, { streamingBehavior: 'followUp' }),
       );
     } finally {

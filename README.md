@@ -33,8 +33,8 @@ pnpm dev
 ```env
 DEEPSEEK_API_KEY=...
 
-# 公司统一音乐代理优先；本地无 key 时可先 SUNO_PROVIDER=mock
-SUNO_PROVIDER=musicproxy
+# 本机实际配置：sunoapi（真实）+ mock（免费演示）
+SUNO_PROVIDER=sunoapi
 MUSIC_PROXY_BASE_URL=http://114.132.214.9:8800
 MUSIC_PROXY_API_KEY=...
 MUSIC_PROXY_DEFAULT_PROVIDER=suno_openaihk
@@ -67,7 +67,7 @@ npm run dev:electron
 
 Music Agent 歌曲详情页已有 `push-folia` 入口；生成完成后点击即可调用 `POST /stage/session`，把本地音频和 `.lrc` 文件推给 Folia。
 
-更细的接口契约与启动排错见 [docs/pipeline.md](docs/pipeline.md)。
+更细的启动、双语翻译、Stage 打通与验收步骤见 [docs/使用与开发流程.md](docs/使用与开发流程.md)；接口契约与启动排错见 [docs/pipeline.md](docs/pipeline.md)。
 
 ## 许可证与上游
 
@@ -77,5 +77,16 @@ Music Agent 歌曲详情页已有 `push-folia` 入口；生成完成后点击即
 
 ## 验证
 
-对抗性检验结果、测试命令和已知缺陷见 [docs/adversarial-review.md](docs/adversarial-review.md)。
+验证命令：
 
+```powershell
+cd music-agent
+pnpm test
+pnpm build
+
+cd ..\folia-major
+npm run typecheck
+npm test
+```
+
+对抗性检验结果、测试命令和已知缺陷见 [docs/adversarial-review.md](docs/adversarial-review.md)。

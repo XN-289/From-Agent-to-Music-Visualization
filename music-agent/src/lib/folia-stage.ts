@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { LoadedSongBundle } from '@/lib/media-output';
+import { embedSongMetadata } from '@/lib/mp3-metadata';
 
 export interface FoliaStageHealth {
   available: boolean;
@@ -78,6 +79,27 @@ export async function pushSongToFolia(bundle: LoadedSongBundle): Promise<FoliaSt
     };
   }
 
+  const lrcText = await readFile(bundle.lyricsLrcPath, 'utf8');
+  let tLrcText: string | null = null;
+  if (bundle.lyricsTLrcPath) {
+    tLrcText = await readFile(bundle.lyricsTLrcPath, 'utf8').catch(() => null);
+  }
+  const audioExt = audio.path.split('.').pop()?.toLowerCase();
+  if (audioExt === 'mp3') {
+    try {
+      await embedSongMetadata(audio.path, {
+        title: bundle.title,
+        artist: 'Music Agent',
+        album: 'Music Agent',
+        lrc: lrcText,
+        tLrc: tLrcText,
+        coverPath: bundle.coverPath ?? null,
+      });
+    } catch (e) {
+      console.warn('[folia-stage] MP3 标签嵌入失败（继续推送）:', e instanceof Error ? e.message : String(e));
+    }
+  }
+
   const form = new FormData();
   form.append('title', bundle.title);
   form.append('artist', 'Music Agent');
@@ -85,6 +107,9 @@ export async function pushSongToFolia(bundle: LoadedSongBundle): Promise<FoliaSt
   form.append('lyricsFormat', 'lrc');
   form.append('audioFile', await toFilePart(audio.path, 'audio/mpeg', `${bundle.title}.${audio.path.split('.').pop() ?? 'mp3'}`));
   form.append('lyricsFile', await toFilePart(bundle.lyricsLrcPath, 'text/plain; charset=utf-8', `${bundle.title}.lrc`));
+  if (bundle.coverPath) {
+    form.append('coverFile', await toFilePart(bundle.coverPath, 'image/png', `${bundle.title}-cover.png`));
+  }
 
   try {
     const res = await fetch(`${stageBaseUrl().replace(/\/$/, '')}/stage/session`, {

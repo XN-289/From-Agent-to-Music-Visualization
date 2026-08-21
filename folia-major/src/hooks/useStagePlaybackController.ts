@@ -166,6 +166,7 @@ export function useStagePlaybackController({
     const mainPlaybackSnapshotRef = useRef<PlaybackSnapshot | null>(null);
     const stagePlaybackSnapshotRef = useRef<PlaybackSnapshot | null>(null);
     const lastLoadedStageEntryKeyRef = useRef<string | null>(null);
+    const lastAutoOpenedStageEntryKeyRef = useRef<string | null>(null);
     const lastKnownMainSongRef = useRef<SongResult | null>(null);
     const lastKnownMainQueueRef = useRef<SongResult[]>([]);
     const stageLyricsClockRef = useRef<StageLyricsClockState>({
@@ -1060,6 +1061,20 @@ export function useStagePlaybackController({
             unsubscribeCleared?.();
         };
     }, []);
+
+    useEffect(() => {
+        if (stageSource !== 'stage-api' || activePlaybackContext !== 'main') {
+            return;
+        }
+
+        const nextStageEntryKey = buildStageEntryKey(stageActiveEntryKind, stageLyricsSession, stageMediaSession);
+        if (!nextStageEntryKey || lastAutoOpenedStageEntryKeyRef.current === nextStageEntryKey) {
+            return;
+        }
+
+        lastAutoOpenedStageEntryKeyRef.current = nextStageEntryKey;
+        void openStagePlayer();
+    }, [activePlaybackContext, openStagePlayer, stageActiveEntryKind, stageLyricsSession, stageMediaSession, stageSource]);
 
     useEffect(() => {
         if (stageSource !== 'now-playing') {

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import type { LoadedSongBundle } from '@/lib/media-output';
 import { audioMimeForPath, coverMimeForPath } from '@/lib/media-mime';
 import { embedSongMetadata } from '@/lib/mp3-metadata';
+import type { VisualRecipe } from './visual-recipe';
+import { buildFoliaVisualConfig } from './visual-recipe-to-folia';
 
 export interface FoliaStageHealth {
   available: boolean;
@@ -61,7 +63,7 @@ async function toFilePart(filePath: string, mimeType: string, fileName: string):
   return new File([new Uint8Array(bytes)], fileName, { type: mimeType });
 }
 
-export async function pushSongToFolia(bundle: LoadedSongBundle): Promise<FoliaStagePushResult> {
+export async function pushSongToFolia(bundle: LoadedSongBundle, recipe?: VisualRecipe | null): Promise<FoliaStagePushResult> {
   const token = stageToken();
   if (!token) {
     return {
@@ -106,6 +108,9 @@ export async function pushSongToFolia(bundle: LoadedSongBundle): Promise<FoliaSt
   form.append('artist', 'Music Agent');
   form.append('album', 'Music Agent');
   form.append('lyricsFormat', 'lrc');
+  if (recipe) {
+    form.append('visualConfig', JSON.stringify(buildFoliaVisualConfig(recipe)));
+  }
   form.append('audioFile', await toFilePart(audio.path, audioMimeForPath(audio.path), `${bundle.title}.${audio.path.split('.').pop() ?? 'mp3'}`));
   form.append('lyricsFile', await toFilePart(bundle.lyricsLrcPath, 'text/plain; charset=utf-8', `${bundle.title}.lrc`));
   if (bundle.coverPath) {

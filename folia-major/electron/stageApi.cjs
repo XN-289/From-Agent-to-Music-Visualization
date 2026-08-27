@@ -66,6 +66,68 @@ class StageApiError extends Error {
 const normalizeStageText = (value) => (typeof value === 'string' ? value.trim() : '');
 const isStageLyricsFormat = (value) => STAGE_LYRICS_FORMAT_VALUES.has(value);
 
+const STAGE_VISUAL_MODES = new Set(['classic', 'cadenza', 'partita', 'fume', 'monet']);
+const STAGE_VISUAL_BACKGROUND_MODES = new Set(['common', 'monet', 'nomand', 'latent', 'url', 'sora']);
+const STAGE_VISUAL_FONT_STYLES = new Set(['sans', 'serif', 'mono']);
+const STAGE_VISUAL_ANIMATION_INTENSITIES = new Set(['calm', 'normal', 'chaotic']);
+
+const normalizeStageHexColor = (value, fallback) =>
+  (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value.trim()) ? value.trim() : fallback);
+
+const normalizeStageRatio = (value, fallback, min = 0, max = 1) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.min(max, Math.max(min, numericValue)) : fallback;
+};
+
+const normalizeStageVisualTheme = (value) => {
+  const source = value && typeof value === 'object' ? value : {};
+  return {
+    name: typeof source.name === 'string' ? source.name.trim() : 'Stage Visual',
+    backgroundColor: normalizeStageHexColor(source.backgroundColor, '#070b16'),
+    primaryColor: normalizeStageHexColor(source.primaryColor, '#22d3ee'),
+    accentColor: normalizeStageHexColor(source.accentColor, '#f472b6'),
+    secondaryColor: normalizeStageHexColor(source.secondaryColor, '#a9b3d1'),
+    fontStyle: STAGE_VISUAL_FONT_STYLES.has(source.fontStyle) ? source.fontStyle : 'sans',
+    animationIntensity: STAGE_VISUAL_ANIMATION_INTENSITIES.has(source.animationIntensity)
+      ? source.animationIntensity
+      : 'normal',
+  };
+};
+
+const normalizeStageVisualConfig = (value) => {
+  let parsed = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return null;
+  }
+
+  const rawTheme = parsed.theme && typeof parsed.theme === 'object' ? parsed.theme : {};
+  const light = normalizeStageVisualTheme(rawTheme.light);
+  const dark = normalizeStageVisualTheme(rawTheme.dark);
+  const backgroundOpacity = normalizeStageRatio(parsed.backgroundOpacity, 0.6);
+  const visualizerOpacity = normalizeStageRatio(parsed.visualizerOpacity, 1);
+
+  return {
+    theme: { light, dark },
+    visualizerMode: STAGE_VISUAL_MODES.has(parsed.visualizerMode) ? parsed.visualizerMode : 'classic',
+    visualizerBackgroundMode: STAGE_VISUAL_BACKGROUND_MODES.has(parsed.visualizerBackgroundMode)
+      ? parsed.visualizerBackgroundMode
+      : 'common',
+    backgroundOpacity,
+    visualizerOpacity,
+    useCoverColorBg: Boolean(parsed.useCoverColorBg),
+    disableVisualizerGeometricBackground: Boolean(parsed.disableVisualizerGeometricBackground),
+    disableVisualizerVignette: Boolean(parsed.disableVisualizerVignette),
+  };
+};
+
 const hasLrcTimeline = (text) => /\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/.test(text);
 
 const hasEnhancedWordTimeline = (text) =>
@@ -1053,6 +1115,7 @@ function createStageApi({
         audioUrl: typeof payload.audioUrl === 'string' ? payload.audioUrl : '',
         lyricsText: typeof payload.lyricsText === 'string' ? payload.lyricsText : '',
         lyricsFormat: typeof payload.lyricsFormat === 'string' ? payload.lyricsFormat : '',
+        visualConfig: payload.visualConfig ?? '',
       },
       files: {},
       sessionId: path.basename(workingDirectory),
@@ -1133,6 +1196,7 @@ function createStageApi({
   const createStageMediaSessionFromPayload = async (parsedPayload) => {
     const fields = parsedPayload.fields || {};
     const files = parsedPayload.files || {};
+    const visualConfig = normalizeStageVisualConfig(fields.visualConfig);
     const sessionId = typeof parsedPayload.sessionId === 'string' && parsedPayload.sessionId.trim()
       ? parsedPayload.sessionId.trim()
       : `stage-${Date.now()}-${crypto.randomUUID()}`;
@@ -1260,6 +1324,7 @@ function createStageApi({
       lyricsText: normalizedResolvedLyricsText || null,
       translationLyrics: normalizeStageText(embeddedMetadata?.translationLyrics) || null,
       lyricsFormat: detectedLyricsFormat || null,
+      visualConfig,
       updatedAt: sessionVersion,
     };
 

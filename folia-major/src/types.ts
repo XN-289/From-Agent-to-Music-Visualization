@@ -194,6 +194,20 @@ export interface StageLyricsSession {
   updatedAt: number;
 }
 
+export interface StageVisualConfig {
+  theme: {
+    light: Theme;
+    dark: Theme;
+  };
+  visualizerMode: VisualizerMode;
+  visualizerBackgroundMode: VisualizerBackgroundMode;
+  backgroundOpacity: number;
+  visualizerOpacity: number;
+  useCoverColorBg: boolean;
+  disableVisualizerGeometricBackground: boolean;
+  disableVisualizerVignette: boolean;
+}
+
 export interface StageMediaSession {
   id: string;
   title: string;
@@ -210,6 +224,7 @@ export interface StageMediaSession {
   lyricsFormat?: 'lrc' | 'enhanced-lrc' | 'vtt' | 'ttml' | 'yrc' | 'qrc' | null;
   /** 从上传音频内嵌 USLT 提取的翻译歌词（如 language=chi 帧）；带时间轴时与主歌词共轴显示 */
   translationLyrics?: string | null;
+  visualConfig?: StageVisualConfig | null;
   updatedAt: number;
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { initPlayerEvents, usePlayerStore } from "./player-store";
+import { AudioVisualizer } from "./audio-visualizer";
 import { Button } from "@/components/ui/button";
 import { Music2, Pause, Play } from "lucide-react";
 
@@ -24,38 +24,43 @@ export function PlayerBar() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-          onClick={toggle}
-          aria-label={playing ? "暂停" : "播放"}
-        >
-          {playing ? <Pause /> : <Play />}
-        </Button>
-        <Link href={`/songs/${current.songId}`} className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-gradient-to-br from-emerald-500/70 to-teal-700/60 text-white">
-            <Music2 className="h-4 w-4" />
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="h-12 w-full overflow-hidden rounded-md">
+          <AudioVisualizer url={current.url} variantId={current.variantId} className="h-12 w-full" />
+        </div>
+        <div className="flex h-16 items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+            onClick={toggle}
+            aria-label={playing ? "暂停" : "播放"}
+          >
+            {playing ? <Pause /> : <Play />}
+          </Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-gradient-to-br from-emerald-500/70 to-teal-700/60 text-white">
+              <Music2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{current.title}</p>
+              <p className="text-xs tabular-nums text-muted-foreground">
+                {formatTime(progressSec)} / {formatTime(durationSec)}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{current.title}</p>
-            <p className="text-xs tabular-nums text-muted-foreground">
-              {formatTime(progressSec)} / {formatTime(durationSec)}
-            </p>
-          </div>
-        </Link>
-        <input
-          type="range"
-          min={0}
-          max={durationSec || 100}
-          step={0.1}
-          value={Math.min(progressSec, durationSec || 100)}
-          onChange={(e) => seek(Number(e.target.value))}
-          className="flex-1 accent-emerald-600 disabled:opacity-40"
-          disabled={durationSec <= 0}
-          aria-label="播放进度"
-        />
+          <input
+            type="range"
+            min={0}
+            max={durationSec || 100}
+            step={0.1}
+            value={Math.min(progressSec, durationSec || 100)}
+            onChange={(e) => seek(Number(e.target.value))}
+            className="flex-1 accent-emerald-600 disabled:opacity-40"
+            disabled={durationSec <= 0}
+            aria-label="播放进度"
+          />
+        </div>
       </div>
     </div>
   );

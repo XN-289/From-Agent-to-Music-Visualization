@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import type { VisualRecipe } from '@/lib/visual-recipe';
 
 // P0 用 SQLite 起步（务实 MVP，零部署依赖）；Drizzle 迁移到 Postgres 只需换驱动 + 微调列类型。
 
@@ -33,6 +34,8 @@ export const songs = sqliteTable(
     lyricsLrc: text('lyrics_lrc'),
     /** 逐行翻译时间戳歌词（JSON: LyricsLine[]），主/翻共轴；无翻译为 null */
     lyricsTlrc: text('lyrics_tlrc'),
+    /** Studio Mode 的视觉配方：预设、能量、色温与高潮氛围 */
+    visualRecipe: text('visual_recipe', { mode: 'json' }).$type<VisualRecipe>(),
     styleTags: text('style_tags', { mode: 'json' }).$type<string[]>(),
     prompt: text('prompt'),
     instrumental: integer('instrumental', { mode: 'boolean' }).notNull().default(false),

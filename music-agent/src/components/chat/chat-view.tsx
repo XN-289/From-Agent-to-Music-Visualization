@@ -39,6 +39,8 @@ interface ChatMsg {
   id: string;
   role: "user" | "assistant";
   text: string;
+  thinking?: string;
+  thinkingOpen?: boolean;
   tool?: ToolMsg;
   params?: PanelParams; // 该条消息携带的面板参数（展示用，服务端持久化 text 不变）
   done: boolean;
@@ -111,6 +113,7 @@ interface HistoryRow {
   id: string;
   role: "user" | "assistant";
   text: string;
+  thinking?: string;
   params?: PanelParams;
   tools?: Array<{
     toolName?: string;
@@ -144,10 +147,18 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
   const lastSendRef = useRef<{ text: string; params?: PanelParams; refAudio?: string } | null>(null);
   const lastActivityRef = useRef(0);
   const reuseHandledRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   // 收到过增量流的消息 id：完整文本兜底（delta）不应覆盖已流式累积的文本
   const streamedRef = useRef(new Set<string>());
   const chatIdRef = useRef<string>("default");
   const searchParams = useSearchParams();
+
+  // 输入框固定在底部：消息内容在中间滚动，新增/流式内容自动滚到最新。
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || messages.length === 0) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, sending, error]);
 
   // Reuse Prompt：从详情页跳转 ?reuse=songId → 预填创作输入（复用提示词与风格）
   useEffect(() => {
@@ -191,6 +202,8 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
             id: m.id,
             role: m.role,
             text: m.text ?? "",
+            thinking: m.thinking,
+            thinkingOpen: false,
             params: m.params,
             tool:
               m.tools && m.tools.length > 0
@@ -259,7 +272,14 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
       params: hasParams(paramsForSend) ? paramsForSend : undefined,
       done: true,
     };
-    const assistantMsg: ChatMsg = { id: `a${++idRef.current}`, role: "assistant", text: "", done: false };
+    const assistantMsg: ChatMsg = {
+      id: `a${++idRef.current}`,
+      role: "assistant",
+      text: "",
+      thinking: "",
+      thinkingOpen: false,
+      done: false,
+    };
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
 
     const controller = new AbortController();
@@ -286,6 +306,22 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
               if (typeof d.text !== "string") break;
               if (streamedRef.current.has(assistantMsg.id)) break; // 已流式累积，跳过兜底覆盖
               patchMsg(assistantMsg.id, { text: d.text });
+              break;
+            }
+            case "thinking_delta": {
+              const d = data as { delta?: string };
+              if (typeof d.delta !== "string") break;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsg.id
+                    ? { ...m, thinking: `${m.thinking ?? ""}${d.delta}`, thinkingOpen: true }
+                    : m,
+                ),
+              );
+              break;
+            }
+            case "thinking_end": {
+              // 保留已展开的思考链；结束时不要抢着收起，用户能完整看到推理过程。
               break;
             }
             case "tool_start": {
@@ -426,8 +462,8 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
   const isFirst = messages.length === 0;
 
   return (
-    <div className="mx-auto flex h-full max-w-3xl flex-col px-4 py-8">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-4 py-4">
+      <div className="mb-3 flex shrink-0 items-center justify-between">
         <div className="text-xs text-muted-foreground">
           {credits?.unlimited
             ? `Mock 生成 · 不限额度 · 今日已生成 ${credits.todayCount ?? 0} 首`
@@ -440,151 +476,179 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
         </Button>
       </div>
 
-      {isFirst && (
-        <div className="mt-12">
-          <h1 className="text-center text-4xl font-bold tracking-tight">
-            想做什么<span className="text-primary">歌</span>？
-          </h1>
+      <div ref={scrollRef} className="-mr-1 min-h-0 flex-1 overflow-y-auto pr-1">
+        {isFirst && (
+          <div className="mt-12">
+            <h1 className="text-center text-4xl font-bold tracking-tight">
+              想做什么<span className="text-primary">歌</span>？
+            </h1>
 
-          {/* hero 输入框（Suno 文本主导：输入即主角） */}
-          <div className="mx-auto mt-8 max-w-2xl">
-            <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary/20">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="例如：一首送给妈妈的歌 / 深夜 emo 说唱 / 给毕业写首歌"
-                rows={2}
-                autoFocus
-                className="resize-none border-0 bg-transparent p-2 shadow-none focus-visible:ring-0"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    onSubmit(e);
-                  }
-                }}
-              />
-              <div className="flex items-center justify-between px-2 pb-1">
-                <span className="text-xs text-muted-foreground">Enter 发送 · Shift+Enter 换行</span>
-                <Button
-                  type="button"
-                  size="lg"
-                  disabled={!input.trim() || sending}
-                  onClick={() => {
-                    const t = input.trim();
-                    if (!t || sending) return;
-                    setInput("");
-                    void sendPrompt(t);
+            {/* hero 输入框（Suno 文本主导：输入即主角） */}
+            <div className="mx-auto mt-8 max-w-2xl">
+              <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary/20">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="例如：一首送给妈妈的歌 / 深夜 emo 说唱 / 给毕业写首歌"
+                  rows={2}
+                  autoFocus
+                  className="resize-none border-0 bg-transparent p-2 shadow-none focus-visible:ring-0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      onSubmit(e);
+                    }
                   }}
-                >
-                  {sending ? "生成中…" : "生成"}
-                </Button>
+                />
+                <div className="flex items-center justify-between px-2 pb-1">
+                  <span className="text-xs text-muted-foreground">Enter 发送 · Shift+Enter 换行</span>
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={!input.trim() || sending}
+                    onClick={() => {
+                      const t = input.trim();
+                      if (!t || sending) return;
+                      setInput("");
+                      void sendPrompt(t);
+                    }}
+                  >
+                    {sending ? "生成中…" : "生成"}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 场景入口（对标海绵精选页结构） */}
-          <div className="mt-14">
-            <p className="text-xs font-medium tracking-widest text-muted-foreground">场景</p>
-            <div className="mt-4 grid grid-cols-4 gap-3">
-              {SCENARIO_CARDS.map((c) => (
-                <button
-                  key={c.label}
-                  type="button"
-                  onClick={() => setInput(c.label)}
-                  className="group flex flex-col items-start gap-2 rounded-lg border bg-card p-3 text-left transition-colors hover:border-primary"
-                >
-                  <span
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${coverGradient(c.label)} text-lg transition-transform group-hover:scale-105`}
-                  >
-                    {c.emoji}
-                  </span>
-                  <span className="text-sm">{c.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 自定义参数面板（对标海绵「自定义创作」：曲风/心情/音色直接选，不必打字描述） */}
-          <div className="mt-14">
-            <p className="text-xs font-medium tracking-widest text-muted-foreground">自定义</p>
-            <div className="mt-4">
-              <ParamsPanel value={params} onChange={setParams} />
-            </div>
-          </div>
-
-          {/* 精选（对标海绵「精选 AI 音乐」/ musicmake Sample Works） */}
-          {recentSongs && recentSongs.length > 0 && (
+            {/* 场景入口（对标海绵精选页结构） */}
             <div className="mt-14">
-              <p className="text-xs font-medium tracking-widest text-muted-foreground">精选</p>
-              <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2">
-                {recentSongs.map((s) => (
-                  <div key={s.id} className="w-40 shrink-0">
-                    <SongCard song={s} />
-                  </div>
+              <p className="text-xs font-medium tracking-widest text-muted-foreground">场景</p>
+              <div className="mt-4 grid grid-cols-4 gap-3">
+                {SCENARIO_CARDS.map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    onClick={() => setInput(c.label)}
+                    className="group flex flex-col items-start gap-2 rounded-lg border bg-card p-3 text-left transition-colors hover:border-primary"
+                  >
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${coverGradient(c.label)} text-lg transition-transform group-hover:scale-105`}
+                    >
+                      {c.emoji}
+                    </span>
+                    <span className="text-sm">{c.label}</span>
+                  </button>
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      )}
 
-      <div className="flex flex-col gap-6">
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={cn("flex flex-col gap-2", m.role === "user" ? "items-end" : "items-start")}
-          >
-            {m.text.length > 0 &&
-              (m.role === "assistant" && m.done ? (
-                <AssistantMessageText
-                  text={m.text}
-                  disabled={sending}
-                  onSelectOption={(opt) => {
-                    // 方向选择是用户对方向的裁决，本条消息不带面板参数，避免两种约束冲突
-                    void sendPrompt(`就选「${opt.title}」这个方向`, { params: null });
-                  }}
-                />
-              ) : m.role === "assistant" ? (
-                <p className="max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed">
-                  {m.text}
-                  {!m.done && <span className="ml-0.5 animate-pulse">▍</span>}
-                </p>
-              ) : (
-                <div className="max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
-                  <p className="whitespace-pre-wrap">{m.text}</p>
-                  {m.params && hasParams(m.params) && (
-                    <p className="mt-1.5 text-xs text-primary-foreground/70">
-                      🎛 {paramsSummary(m.params)}
-                    </p>
-                  )}
+            {/* 自定义参数面板（对标海绵「自定义创作」：曲风/心情/音色直接选，不必打字描述） */}
+            <div className="mt-14">
+              <p className="text-xs font-medium tracking-widest text-muted-foreground">自定义</p>
+              <div className="mt-4">
+                <ParamsPanel value={params} onChange={setParams} />
+              </div>
+            </div>
+
+            {/* 精选（对标海绵「精选 AI 音乐」/ musicmake Sample Works） */}
+            {recentSongs && recentSongs.length > 0 && (
+              <div className="mt-14">
+                <p className="text-xs font-medium tracking-widest text-muted-foreground">精选</p>
+                <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2">
+                  {recentSongs.map((s) => (
+                    <div key={s.id} className="w-40 shrink-0">
+                      <SongCard song={s} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            {m.tool && (
-              <div className="w-full">
-                {m.tool.jobId && m.tool.songId ? (
-                  <GenerationCard jobId={m.tool.jobId} songId={m.tool.songId} title={m.tool.title} />
-                ) : m.tool.isError ? (
-                  m.tool.errorText ? (
-                    // 流程性拦截（如确认 gate）：中性提示，不是系统错误
-                    <p className="text-sm text-muted-foreground">
-                      ⏸ {m.tool.errorText}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-destructive">❌ {m.tool.title} 生成调用失败</p>
-                  )
-                ) : (
-                  <p className="animate-pulse text-sm text-muted-foreground">
-                    🎼 正在提交生成任务…
-                  </p>
-                )}
               </div>
             )}
           </div>
-        ))}
+        )}
+
+        <div className="flex flex-col gap-6 pb-6">
+          {messages.map((m, index) => (
+            <div
+              key={m.id}
+              className={cn("flex flex-col gap-2", m.role === "user" ? "items-end" : "items-start")}
+            >
+              {m.role === "assistant" && m.thinking && (
+                <div className="w-full max-w-[85%] rounded-lg border border-dashed bg-muted/25 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => patchMsg(m.id, { thinkingOpen: !m.thinkingOpen })}
+                    className="flex w-full items-center justify-between text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="inline-block h-2 w-2 rounded-full bg-primary/70" />
+                      思考链
+                    </span>
+                    <span>{m.thinkingOpen ? "收起" : "展开"}</span>
+                  </button>
+                  {m.thinkingOpen && (
+                    <pre className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
+                      {m.thinking}
+                      {!m.done && <span className="ml-0.5 animate-pulse">▍</span>}
+                    </pre>
+                  )}
+                </div>
+              )}
+              {m.text.length > 0 &&
+                (m.role === "assistant" && m.done ? (
+                  <AssistantMessageText
+                    text={m.text}
+                    disabled={sending}
+                    onSelectOption={(opt) => {
+                      // 方向选择是用户对方向的裁决，本条消息不带面板参数，避免两种约束冲突
+                      void sendPrompt(`就选「${opt.title}」这个方向`, { params: null });
+                    }}
+                  />
+                ) : m.role === "assistant" ? (
+                  <p className="max-w-[85%] whitespace-pre-wrap text-sm leading-relaxed">
+                    {m.text}
+                    {!m.done && <span className="ml-0.5 animate-pulse">▍</span>}
+                  </p>
+                ) : (
+                  <div className="max-w-[85%] rounded-lg bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground">
+                    <p className="whitespace-pre-wrap">{m.text}</p>
+                    {m.params && hasParams(m.params) && (
+                      <p className="mt-1.5 text-xs text-primary-foreground/70">
+                        🎛 {paramsSummary(m.params)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              {m.tool && (
+                <div className="w-full">
+                  {m.tool.jobId && m.tool.songId ? (
+                    <GenerationCard
+                      jobId={m.tool.jobId}
+                      songId={m.tool.songId}
+                      title={m.tool.title}
+                      autoPlay={index === messages.length - 1}
+                    />
+                  ) : m.tool.isError ? (
+                    m.tool.errorText ? (
+                      // 流程性拦截（如确认 gate）：中性提示，不是系统错误
+                      <p className="text-sm text-muted-foreground">
+                        ⏸ {m.tool.errorText}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-destructive">❌ {m.tool.title} 生成调用失败</p>
+                    )
+                  ) : (
+                    <p className="animate-pulse text-sm text-muted-foreground">
+                      🎼 正在提交生成任务…
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && (
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="mt-3 flex shrink-0 items-center justify-between rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <span>出错了：{error}</span>
           <Button
             variant="ghost"
@@ -604,7 +668,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
       )}
 
       {!isFirst && (
-        <form onSubmit={onSubmit} className="sticky bottom-2 mt-6 space-y-3">
+        <form onSubmit={onSubmit} className="mt-3 shrink-0 space-y-3">
           <div className="rounded-xl border bg-card p-4 shadow-sm transition-shadow focus-within:border-primary/50 focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary/20">
             <Textarea
               value={input}

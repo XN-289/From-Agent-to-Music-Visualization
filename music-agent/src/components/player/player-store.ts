@@ -16,7 +16,7 @@ interface PlayerState {
   /** 当前播放进度（秒），由 timeupdate 事件驱动 */
   progressSec: number;
   durationSec: number;
-  play: (np: NowPlaying) => void;
+  play: (np: NowPlaying) => Promise<boolean>;
   toggle: () => void;
   pause: () => void;
   seek: (sec: number) => void;
@@ -44,23 +44,37 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   play: (np) => {
     const audio = getAudio();
-    if (!audio) return;
+    if (!audio) return Promise.resolve(false);
     const { current, playing } = get();
     // 点同一首 → 切换播放/暂停；换歌 → 换源播放
     if (current?.variantId === np.variantId) {
       if (playing) {
         audio.pause();
         set({ playing: false });
+        return Promise.resolve(true);
       } else {
-        audio.play().catch(() => set({ playing: false }));
-        set({ playing: true });
+        return audio
+          .play()
+          .then(() => {
+            set({ playing: true });
+            return true;
+          })
+          .catch(() => {
+            set({ playing: false });
+            return false;
+          });
       }
-      return;
     }
     audio.src = np.url;
     audio.currentTime = 0;
-    audio.play().catch(() => set({ playing: false }));
     set({ current: np, playing: true, progressSec: 0, durationSec: 0 });
+    return audio
+      .play()
+      .then(() => true)
+      .catch(() => {
+        set({ playing: false });
+        return false;
+      });
   },
 
   toggle: () => {

@@ -11,6 +11,7 @@ import {
   pushSongToFolia,
   type FoliaStagePushResult,
 } from '@/lib/folia-stage';
+import { normalizeVisualRecipe } from '@/lib/visual-recipe';
 
 export interface SongDeliveryResult {
   bundle: LoadedSongBundle | null;
@@ -83,7 +84,11 @@ export async function deliverSong(songId: string, opts: { pushToFolia?: boolean 
     };
   }
 
-  const stage = await pushSongToFolia(bundle);
+  const song = (
+    await db.select({ visualRecipe: schema.songs.visualRecipe }).from(schema.songs).where(eq(schema.songs.id, songId))
+  )[0];
+  const recipe = normalizeVisualRecipe(song?.visualRecipe ?? null);
+  const stage = await pushSongToFolia(bundle, recipe);
   return { bundle, stage };
 }
 

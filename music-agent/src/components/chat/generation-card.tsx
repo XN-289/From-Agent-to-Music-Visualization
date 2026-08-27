@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { pollJob, type JobPollResult } from "@/lib/client";
 import { usePlayerStore } from "@/components/player/player-store";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ExternalLink, Music2, Pause, Play } from "lucide-react";
+import { ChevronDown, ChevronUp, Music2, Pause, Play } from "lucide-react";
 
 // 生成卡片：出现在聊天流中，轮询 /api/jobs/[id] 展示阶段化进度，
 // 完成后提供两个变体的醒目试听卡片（Suno 惯例：一次生成 2 个变体做 A/B）。
@@ -14,12 +12,17 @@ export function GenerationCard({
   jobId,
   songId,
   title,
+  autoPlay = false,
 }: {
   jobId: string;
   songId: string;
   title: string;
+  autoPlay?: boolean;
 }) {
   const [res, setRes] = useState<JobPollResult | null>(null);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
+  const autoPlayedRef = useRef(false);
   const current = usePlayerStore((s) => s.current);
   const playing = usePlayerStore((s) => s.playing);
   const play = usePlayerStore((s) => s.play);
@@ -42,9 +45,24 @@ export function GenerationCard({
     };
   }, [jobId]);
 
-  const variants = res?.song?.variants ?? [];
+  const variants = useMemo(() => res?.song?.variants ?? [], [res?.song?.variants]);
   const done = res?.job.status === "success";
   const failed = res?.job.status === "failed";
+
+  useEffect(() => {
+    if (!autoPlay || autoPlayedRef.current || !done || variants.length === 0) return;
+    autoPlayedRef.current = true;
+    setAutoPlayBlocked(false);
+    const first = variants[0];
+    void play({
+      songId,
+      variantId: first.id,
+      url: first.audioUrl,
+      title: first.title,
+    }).then((started) => {
+      if (!started) setAutoPlayBlocked(true);
+    });
+  }, [autoPlay, done, play, songId, variants]);
 
   return (
     <div className="w-full max-w-xl rounded-lg border bg-card p-4">
@@ -55,14 +73,24 @@ export function GenerationCard({
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{title}</p>
           <p className="text-xs text-muted-foreground">
-            {done ? "生成完成，试听两个变体" : failed ? "生成失败" : "正在制作中…"}
+            {done
+              ? autoPlayBlocked
+                ? "生成完成，点一下现在听"
+                : "生成完成，试听两个变体"
+              : failed
+                ? "生成失败"
+                : "正在制作中…"}
           </p>
         </div>
-        {done && (
-          <Button variant="outline" size="sm" render={<Link href={`/songs/${songId}`} />}>
-            <ExternalLink className="h-3.5 w-3.5" />
-            详情
-          </Button>
+        {done && res?.song?.lyrics && (
+          <button
+            type="button"
+            onClick={() => setShowLyrics((v) => !v)}
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {showLyrics ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            歌词
+          </button>
         )}
       </div>
 
@@ -81,34 +109,67 @@ export function GenerationCard({
       {failed && <p className="mt-3 text-sm text-destructive">{res?.job.error ?? "生成失败"}</p>}
 
       {done && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {variants.map((v, i) => {
-            const active = current?.variantId === v.id;
-            return (
+        <div className="mt-3 space-y-3">
+          {autoPlayBlocked && variants[0] && (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                浏览器拦截了自动播放，点击“现在听”即可在当前页开始。
+              </p>
               <button
-                key={v.id}
                 type="button"
-                onClick={() => play({ songId, variantId: v.id, url: v.audioUrl, title: v.title })}
-                className={
-                  active
-                    ? "flex flex-col gap-1.5 rounded-md border border-primary bg-primary/10 p-3 text-left transition-colors"
-                    : "flex flex-col gap-1.5 rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
-                }
+                onClick={() => {
+                  setAutoPlayBlocked(false);
+                  void play({
+                    songId,
+                    variantId: variants[0].id,
+                    url: variants[0].audioUrl,
+                    title: variants[0].title,
+                  });
+                }}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-amber-500 px-3 text-sm font-medium text-white transition-colors hover:bg-amber-600"
               >
-                <span className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">变体 {i === 0 ? "A" : "B"}</span>
-                  {active && playing ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {active ? "正在播放" : "点击试听"} · {Math.round(v.durationSec || 0)}s
-                </span>
+                <Play className="h-4 w-4" />
+                现在听
               </button>
-            );
-          })}
+            </div>
+          )}
+          {showLyrics && res?.song?.lyrics && (
+            <p className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 text-sm leading-relaxed text-muted-foreground">
+              {res.song.lyrics}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {variants.map((v, i) => {
+              const active = current?.variantId === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => {
+                    setAutoPlayBlocked(false);
+                    void play({ songId, variantId: v.id, url: v.audioUrl, title: v.title });
+                  }}
+                  className={
+                    active
+                      ? "flex flex-col gap-1.5 rounded-md border border-primary bg-primary/10 p-3 text-left transition-colors"
+                      : "flex flex-col gap-1.5 rounded-md border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-primary/5"
+                  }
+                >
+                  <span className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">变体 {i === 0 ? "A" : "B"}</span>
+                    {active && playing ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {active ? "正在播放" : "点击试听"} · {Math.round(v.durationSec || 0)}s
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

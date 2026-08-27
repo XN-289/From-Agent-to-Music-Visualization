@@ -392,6 +392,7 @@ export default function App() {
         handleTogglePreventDisplaySleepDuringPlayback,
         handleToggleMediaCache,
         handleSetBackgroundOpacity,
+        handleSetVisualizerOpacity,
         setDaylightPreference,
         handleSetVisualizerMode,
         handleToggleRandomVisualizerModePerSong,
@@ -1091,6 +1092,42 @@ export default function App() {
         setStatusMsg,
         navigateToPlayer,
     });
+
+    const lastAppliedStageVisualConfigRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const visualConfig = stageMediaSession?.visualConfig;
+        if (!visualConfig || !stageMediaSession?.updatedAt) {
+            return;
+        }
+
+        if (lastAppliedStageVisualConfigRef.current === stageMediaSession.updatedAt) {
+            return;
+        }
+
+        lastAppliedStageVisualConfigRef.current = stageMediaSession.updatedAt;
+        const selectedTheme = isDaylight ? visualConfig.theme.light : visualConfig.theme.dark;
+
+        setTheme(selectedTheme);
+        handleSetVisualizerMode(visualConfig.visualizerMode);
+        handleSetVisualizerBackgroundMode(visualConfig.visualizerBackgroundMode);
+        handleSetBackgroundOpacity(visualConfig.backgroundOpacity);
+        handleSetVisualizerOpacity(visualConfig.visualizerOpacity);
+        handleToggleCoverColorBg(visualConfig.useCoverColorBg);
+        handleToggleDisableVisualizerVignette(visualConfig.disableVisualizerVignette);
+        handleToggleDisableVisualizerGeometricBackground(visualConfig.disableVisualizerGeometricBackground);
+    }, [
+        handleSetBackgroundOpacity,
+        handleSetVisualizerBackgroundMode,
+        handleSetVisualizerMode,
+        handleSetVisualizerOpacity,
+        handleToggleCoverColorBg,
+        handleToggleDisableVisualizerGeometricBackground,
+        handleToggleDisableVisualizerVignette,
+        isDaylight,
+        setTheme,
+        stageMediaSession,
+    ]);
 
     const {
         restoreStatus: windowPlaybackHandoffRestoreStatus,

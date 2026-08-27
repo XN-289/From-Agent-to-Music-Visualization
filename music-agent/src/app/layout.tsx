@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="zh-CN" className={`${spaceGrotesk.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col pb-20">
+      <body className="h-full overflow-hidden flex flex-col pb-28">
         <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
@@ -31,13 +31,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/" className="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-foreground">
                 创作
               </Link>
+              <Link href="/studio" className="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-foreground">
+                Studio
+              </Link>
               <Link href="/library" className="rounded-md px-3 py-1.5 transition-colors hover:bg-accent hover:text-foreground">
                 曲库
               </Link>
             </nav>
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         <PlayerBar />
         <Toaster position="top-center" />
       </body>

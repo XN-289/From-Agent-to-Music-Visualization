@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { addSessionListener, isPromptRunning, messageText, queuePrompt } from '@/lib/agent/pi';
+import { ThinkStreamSplitter, splitThinkText } from '@/lib/agent/think-stream';
 import { db, schema } from '@/lib/db';
 import { PANEL_GROUPS, panelValueOf, type PanelKey } from '@/lib/panel-params';
 import { checkRateLimit, clientIp } from '@/lib/rate-limit';
@@ -33,6 +34,8 @@ function extractToolErrorText(result: unknown): string | undefined {
 // 事件经 hub 广播映射为 SSE：
 //   event: delta_chunk data: { text }    助手增量文本
 //   event: delta       data: { text }    助手完整文本兜底（客户端仅在无增量时应用）
+//   event: thinking_delta data: { delta } 助手思考链增量
+//   event: thinking_end   data: { text }  助手思考链结束
 //   event: tool_start  data: { toolName, args }
 //   event: tool_end    data: { toolName, result, isError }
 //   event: done / error
@@ -172,6 +175,8 @@ export async function POST(req: Request) {
       let retryError: string | undefined;
       let sawOutput = false;
       let assistantText = '';
+      let assistantThinking = '';
+      const thinkSplitter = new ThinkStreamSplitter();
       const toolsByCall = new Map<string, ToolRecord>();
 
       const off = addSessionListener(chatId, (ev) => {
@@ -180,22 +185,57 @@ export async function POST(req: Request) {
             if ((ev.message as { role?: string }).role !== 'assistant') break;
             const ae = ev.assistantMessageEvent as { type?: string; delta?: string };
             if (ae?.type === 'text_delta' && typeof ae.delta === 'string') {
-              sawOutput = true;
-              assistantText += ae.delta;
-              send('delta_chunk', { text: ae.delta });
+              for (const piece of thinkSplitter.push(ae.delta)) {
+                if (piece.type === 'text') {
+                  sawOutput = true;
+                  assistantText += piece.text;
+                  send('delta_chunk', { text: piece.text });
+                } else if (piece.type === 'thinking') {
+                  assistantThinking += piece.delta;
+                  send('thinking_delta', { delta: piece.delta });
+                } else {
+                  send('thinking_end', { text: assistantThinking });
+                }
+              }
+            }
+            if (ae?.type === 'thinking_delta' && typeof ae.delta === 'string') {
+              assistantThinking += ae.delta;
+              send('thinking_delta', { delta: ae.delta });
+            }
+            if (ae?.type === 'thinking_end') {
+              send('thinking_end', { text: assistantThinking });
             }
             break;
           }
           case 'message_end': {
             if ((ev.message as { role?: string }).role !== 'assistant') break;
             const t = messageText(ev.message);
+            const assistant = ev.message as {
+              role?: string;
+              stopReason?: string;
+              errorMessage?: string;
+            };
+            if (assistant.stopReason === 'error') {
+              sawRetryFailure = true;
+              retryError = assistant.errorMessage ?? retryError;
+            }
             if (t) {
+              const clean = splitThinkText(t);
               sawOutput = true;
               // 累积多段助手消息（方案文本 + 生成后确认），避免后一段覆盖前一段
-              if (!assistantText.includes(t)) {
-                assistantText = assistantText ? `${assistantText}\n\n${t}` : t;
+              if (clean.text && !assistantText.includes(clean.text)) {
+                assistantText = assistantText ? `${assistantText}\n\n${clean.text}` : clean.text;
               }
-              send('delta', { text: t });
+              if (clean.text) {
+                send('delta', { text: clean.text });
+              }
+              if (clean.thinking && !assistantThinking.includes(clean.thinking)) {
+                assistantThinking = assistantThinking
+                  ? `${assistantThinking}${clean.thinking}`
+                  : clean.thinking;
+                send('thinking_delta', { delta: clean.thinking });
+                send('thinking_end', { text: assistantThinking });
+              }
             }
             break;
           }
@@ -249,12 +289,28 @@ export async function POST(req: Request) {
 
       try {
         await queuePrompt(chatId, promptForLlm);
+        for (const piece of thinkSplitter.flush()) {
+          if (piece.type === 'text') {
+            sawOutput = true;
+            assistantText += piece.text;
+            send('delta_chunk', { text: piece.text });
+          } else if (piece.type === 'thinking') {
+            assistantThinking += piece.delta;
+            send('thinking_delta', { delta: piece.delta });
+          } else {
+            send('thinking_end', { text: assistantThinking });
+          }
+        }
         // 助手消息持久化（文本 + 工具卡片）
         await db.insert(schema.messages).values({
           id: crypto.randomUUID(),
           chatId,
           role: 'assistant',
-          content: JSON.stringify({ text: assistantText, tools: [...toolsByCall.values()] }),
+          content: JSON.stringify({
+            text: assistantText,
+            thinking: assistantThinking || undefined,
+            tools: [...toolsByCall.values()],
+          }),
           createdAt: new Date(),
         });
         if (sawRetryFailure && !sawOutput) {

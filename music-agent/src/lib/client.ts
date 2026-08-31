@@ -1,6 +1,7 @@
 // 客户端 API 助手：轮询生成任务、读取歌曲。
 // 所有 Suno 后端都是异步 job 模型，前端统一用 pollJob 驱动进度 UI。
 import type { GenerationJobStatus, GenerationStatus } from '@/lib/generation-state';
+import type { StageDeliveryStatus } from '@/lib/db/schema';
 
 export interface SongDto {
   id: string;
@@ -13,6 +14,9 @@ export interface SongDto {
   status: GenerationStatus;
   progress: number;
   stage: string | null;
+  stageDeliveryStatus: StageDeliveryStatus;
+  stageDeliveryError: string | null;
+  stageDeliveryUpdatedAt: number | null;
   variants: {
     id: string;
     audioUrl: string;

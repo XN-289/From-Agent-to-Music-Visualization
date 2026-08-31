@@ -6,7 +6,12 @@ import { getFromCache, removeFromCache, saveToCache } from '../services/db';
 import { NowPlayingProvider } from '../services/nowPlayingProvider';
 import { usePlayerCapSource } from './usePlayerCapSource';
 import { findLatestActiveLineIndex, hasRenderableLyrics } from '../utils/appPlaybackHelpers';
-import { buildStageEntryKey, getStageLyricsTimelineBounds } from '../utils/appStageHelpers';
+import {
+    buildStageEntryKey,
+    clearStageStatusEntries,
+    getStageLyricsTimelineBounds,
+    STAGE_STATUS_DISCONNECT_FAILURE_THRESHOLD,
+} from '../utils/appStageHelpers';
 import { getPlaybackSongKey, isStagePlaybackSong } from '../utils/appPlaybackGuards';
 import {
     buildNowPlayingContentLoadKey,
@@ -1082,6 +1087,7 @@ export function useStagePlaybackController({
 
         let disposed = false;
         const baseUrl = WEB_STAGE_API_BASE_URL!.replace(/\/+$/, '');
+        let consecutiveFailures = 0;
 
         const pollStageStatus = async () => {
             try {
@@ -1092,11 +1098,18 @@ export function useStagePlaybackController({
                     throw new Error(`HTTP ${res.status}`);
                 }
                 const nextStatus = (await res.json()) as StageStatus;
+                consecutiveFailures = 0;
                 if (!disposed) {
                     setStageStatus(nextStatus);
                 }
             } catch {
-                // Stage 服务未就绪或鉴权未生效时静默重试，界面保持等待态。
+                consecutiveFailures += 1;
+                if (
+                    !disposed
+                    && consecutiveFailures >= STAGE_STATUS_DISCONNECT_FAILURE_THRESHOLD
+                ) {
+                    setStageStatus(current => (current ? clearStageStatusEntries(current) : current));
+                }
             }
         };
 

@@ -14,6 +14,7 @@ export interface StageSessionRequestInput {
     coverUrl?: string;
     audioUrl?: string;
     lyricsText?: string;
+    translationLyrics?: string;
     lyricsFormat?: StageLyricsFormat | '';
     audioFile?: File | null;
     lyricsFile?: File | null;
@@ -307,6 +308,7 @@ export const buildStageSessionRequest = (input: StageSessionRequestInput): Stage
     const coverUrl = normalizeText(input.coverUrl);
     const audioUrl = normalizeText(input.audioUrl);
     const lyricsText = normalizeText(input.lyricsText);
+    const translationLyrics = normalizeText(input.translationLyrics);
     const normalizedLyricsFormat = normalizeText(input.lyricsFormat);
 
     if (shouldUseStageMultipart(input)) {
@@ -318,6 +320,7 @@ export const buildStageSessionRequest = (input: StageSessionRequestInput): Stage
         if (coverUrl) formData.set('coverUrl', coverUrl);
         if (audioUrl) formData.set('audioUrl', audioUrl);
         if (lyricsText) formData.set('lyricsText', lyricsText);
+        if (translationLyrics) formData.set('translationLyrics', translationLyrics);
         if (input.audioFile) formData.set('audioFile', input.audioFile, input.audioFile.name);
         if (input.lyricsFile) formData.set('lyricsFile', input.lyricsFile, input.lyricsFile.name);
         if (input.coverFile) formData.set('coverFile', input.coverFile, input.coverFile.name);
@@ -348,6 +351,7 @@ export const buildStageSessionRequest = (input: StageSessionRequestInput): Stage
                 ...(coverUrl ? { coverUrl } : {}),
                 ...(audioUrl ? { audioUrl } : {}),
                 ...(lyricsText ? { lyricsText } : {}),
+                ...(translationLyrics ? { translationLyrics } : {}),
                 ...(normalizedLyricsFormat ? { lyricsFormat: normalizedLyricsFormat } : {}),
             }),
         },

@@ -1,0 +1,49 @@
+{
+  "job": {
+    "id": "042ca68c-18b9-4522-9bc0-731f8e1849a3",
+    "status": "completed",
+    "progress": 100,
+    "stage": "完成"
+  },
+  "song": {
+    "id": "1b919ff0-a129-476e-b50e-06db2d462953",
+    "chatId": null,
+    "parentId": null,
+    "title": "US-010 Mock 结构感知时间轴",
+    "lyrics": "[Intro]\n夜明けのつぶやき\n// 晨光低语\n[Verse 1]\n街の灯りが揺れる\n// 街灯在摇晃\n君の声を思い出す\n// 想起你的声音\n[Chorus]\n夏の花火が上がる\n// 夏日烟花升起\nこの瞬間を忘れない\n// 不会忘记这一瞬\n[Outro]\nまた明日\n// 明天见",
+    "lyricsLrc": "[{\"startMs\":0,\"endMs\":2400,\"text\":\"夜明けのつぶやき\"},{\"startMs\":2400,\"endMs\":6400,\"text\":\"街の灯りが揺れる\"},{\"startMs\":6400,\"endMs\":10400,\"text\":\"君の声を思い出す\"},{\"startMs\":10400,\"endMs\":16000,\"text\":\"夏の花火が上がる\"},{\"startMs\":16000,\"endMs\":21600,\"text\":\"この瞬間を忘れない\"},{\"startMs\":21600,\"endMs\":24000,\"text\":\"また明日\"}]",
+    "lyricsTlrc": "[{\"startMs\":0,\"endMs\":2400,\"text\":\"晨光低语\"},{\"startMs\":2400,\"endMs\":6400,\"text\":\"街灯在摇晃\"},{\"startMs\":6400,\"endMs\":10400,\"text\":\"想起你的声音\"},{\"startMs\":10400,\"endMs\":16000,\"text\":\"夏日烟花升起\"},{\"startMs\":16000,\"endMs\":21600,\"text\":\"不会忘记这一瞬\"},{\"startMs\":21600,\"endMs\":24000,\"text\":\"明天见\"}]",
+    "visualRecipe": null,
+    "stageDeliveryStatus": "pending",
+    "stageDeliveryError": null,
+    "stageDeliveryUpdatedAt": "2026-08-31T08:38:16.785Z",
+    "styleTags": [
+      "j-pop",
+      "demo"
+    ],
+    "prompt": "US-010 structured timeline acceptance",
+    "instrumental": false,
+    "status": "completed",
+    "progress": 100,
+    "stage": "完成",
+    "variants": [
+      {
+        "id": "v0",
+        "audioUrl": "/generated/042ca68c-18b9-4522-9bc0-731f8e1849a3-v0.wav",
+        "title": "US-010 Mock 结构感知时间轴",
+        "durationSec": 24,
+        "audioId": "mock:042ca68c-18b9-4522-9bc0-731f8e1849a3:0"
+      },
+      {
+        "id": "v1",
+        "audioUrl": "/generated/042ca68c-18b9-4522-9bc0-731f8e1849a3-v1.wav",
+        "title": "US-010 Mock 结构感知时间轴",
+        "durationSec": 24,
+        "audioId": "mock:042ca68c-18b9-4522-9bc0-731f8e1849a3:1"
+      }
+    ],
+    "error": null,
+    "createdAt": "2026-08-31T08:38:05.727Z",
+    "updatedAt": "2026-08-31T08:38:16.785Z"
+  }
+}

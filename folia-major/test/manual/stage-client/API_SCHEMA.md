@@ -203,7 +203,7 @@ interface StageMediaSession {
 | `coverMimeType` | `string` 可选 | 上传或内嵌封面的 MIME 类型。 |
 | `lyricsText` | `string \| null` 可选 | 歌词文本；可来自请求、歌词文件或音频内嵌歌词。 |
 | `lyricsFormat` | `'lrc' \| 'enhanced-lrc' \| 'vtt' \| 'yrc' \| null` 可选 | 歌词格式；未传时会尝试从文本检测。 |
-| `translationLyrics` | `string \| null` 可选 | 从上传 `audioFile` 的内嵌 USLT 帧提取的翻译歌词（`language=chi` 或 descriptor 含 `translation`）。带 LRC 时间戳时按主歌词共轴显示副字幕。仅当音频内嵌翻译帧时非空。 |
+| `translationLyrics` | `string \| null` 可选 | 显式请求字段优先；未提供时可从上传 `audioFile` 的内嵌 USLT 帧回填（`language=chi` 或 descriptor 含 `translation`）。带 LRC 时间戳时按主歌词共轴显示副字幕。 |
 | `updatedAt` | `number` | 服务端写入时间。 |
 
 ### 播放器公共对象
@@ -393,6 +393,7 @@ interface StageSessionJsonRequest {
   coverUrl?: string;
   audioUrl: string;
   lyricsText?: string;
+  translationLyrics?: string;
   lyricsFormat?: 'lrc' | 'enhanced-lrc' | 'vtt' | 'yrc';
 }
 ```
@@ -405,6 +406,7 @@ interface StageSessionJsonRequest {
 | `coverUrl` | `string` | 否 | 外部封面 URL。 |
 | `audioUrl` | `string` | 是 | 外部音频 URL。JSON 模式不能上传 `audioFile`。 |
 | `lyricsText` | `string` | 否 | 歌词文本。 |
+| `translationLyrics` | `string` | 否 | 独立副字幕歌词文本。提供时优先于音频内嵌翻译帧。 |
 | `lyricsFormat` | `'lrc' \| 'enhanced-lrc' \| 'vtt' \| 'yrc'` | 否 | 歌词格式。不传时会尝试自动检测。 |
 
 ### Multipart 请求
@@ -417,6 +419,7 @@ interface StageSessionMultipartFields {
   coverUrl?: string;
   audioUrl?: string;
   lyricsText?: string;
+  translationLyrics?: string;
   lyricsFormat?: 'lrc' | 'enhanced-lrc' | 'vtt' | 'yrc';
 }
 
@@ -435,6 +438,7 @@ interface StageSessionMultipartFiles {
 | `coverUrl` | form field `string` | 否 | 外部封面 URL。 |
 | `audioUrl` | form field `string` | 条件必填 | 与 `audioFile` 二选一，不能同时提供。 |
 | `lyricsText` | form field `string` | 否 | 与 `lyricsFile` 不能同时提供。 |
+| `translationLyrics` | form field `string` | 否 | 独立副字幕歌词文本。提供时优先于音频内嵌翻译帧。 |
 | `lyricsFormat` | form field enum | 否 | `lrc`、`enhanced-lrc`、`vtt`、`yrc`。 |
 | `audioFile` | file | 条件必填 | 与 `audioUrl` 二选一。上传后服务端会尝试读取内嵌歌词、封面和 metadata。 |
 | `lyricsFile` | file | 否 | 独立歌词文件，按 UTF-8 读取。 |

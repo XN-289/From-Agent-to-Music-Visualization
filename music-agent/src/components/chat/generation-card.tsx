@@ -2,9 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { pollJob, type JobPollResult } from "@/lib/client";
+import type { StageDeliveryStatus } from "@/lib/db/schema";
 import { usePlayerStore } from "@/components/player/player-store";
 import { Progress } from "@/components/ui/progress";
-import { ChevronDown, ChevronUp, Music2, Pause, Play } from "lucide-react";
+import { ChevronDown, ChevronUp, Music2, Pause, Play, RefreshCw } from "lucide-react";
+
+interface StageDeliverySnapshot {
+  stageDeliveryStatus: StageDeliveryStatus;
+  stageDeliveryError: string | null;
+}
 
 // 生成卡片：出现在聊天流中，轮询 /api/jobs/[id] 展示阶段化进度，
 // 完成后提供两个变体的醒目试听卡片（Suno 惯例：一次生成 2 个变体做 A/B）。
@@ -13,16 +19,22 @@ export function GenerationCard({
   songId,
   title,
   autoPlay = false,
+  trackStageDelivery = false,
 }: {
   jobId: string;
   songId: string;
   title: string;
   autoPlay?: boolean;
+  trackStageDelivery?: boolean;
 }) {
   const [res, setRes] = useState<JobPollResult | null>(null);
   const [showLyrics, setShowLyrics] = useState(false);
   const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
+  const [delivery, setDelivery] = useState<StageDeliverySnapshot | null>(null);
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const autoPlayedRef = useRef(false);
+  const sawGeneratingRef = useRef(false);
   const current = usePlayerStore((s) => s.current);
   const playing = usePlayerStore((s) => s.playing);
   const play = usePlayerStore((s) => s.play);
@@ -33,7 +45,17 @@ export function GenerationCard({
     pollJob(
       jobId,
       (r) => {
-        if (!cancelled) setRes(r);
+        if (cancelled) return;
+        setRes(r);
+        if (r.job.status === "submitted" || r.job.status === "generating") {
+          sawGeneratingRef.current = true;
+        }
+        if (r.job.status === "completed" && r.song) {
+          setDelivery({
+            stageDeliveryStatus: r.song.stageDeliveryStatus,
+            stageDeliveryError: r.song.stageDeliveryError,
+          });
+        }
       },
       { signal: controller.signal },
     ).catch(() => {
@@ -50,6 +72,40 @@ export function GenerationCard({
   const failed = res?.job.status === "failed";
 
   useEffect(() => {
+    if (
+      !done ||
+      (!sawGeneratingRef.current && !trackStageDelivery) ||
+      delivery?.stageDeliveryStatus !== "pending"
+    ) {
+      return;
+    }
+    let cancelled = false;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (attempts > 10) {
+        clearInterval(timer);
+        return;
+      }
+      void fetch(`/api/songs/${songId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: StageDeliverySnapshot | null) => {
+          if (cancelled || !data) return;
+          setDelivery({
+            stageDeliveryStatus: data.stageDeliveryStatus,
+            stageDeliveryError: data.stageDeliveryError,
+          });
+          if (data.stageDeliveryStatus !== "pending") clearInterval(timer);
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [delivery?.stageDeliveryStatus, done, songId, trackStageDelivery]);
+
+  useEffect(() => {
     if (!autoPlay || autoPlayedRef.current || !done || variants.length === 0) return;
     autoPlayedRef.current = true;
     setAutoPlayBlocked(false);
@@ -63,6 +119,32 @@ export function GenerationCard({
       if (!started) setAutoPlayBlocked(true);
     });
   }, [autoPlay, done, play, songId, variants]);
+
+  async function retryStageDelivery() {
+    if (deliveryBusy) return;
+    setDeliveryBusy(true);
+    setDeliveryError(null);
+    try {
+      const res = await fetch(`/api/songs/${songId}/push-folia`, { method: "POST" });
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.ok) {
+        const error = data?.error ?? `推送失败（${res.status}）`;
+        setDelivery({ stageDeliveryStatus: "needs_retry", stageDeliveryError: error });
+        setDeliveryError(error);
+        return;
+      }
+      setDelivery({ stageDeliveryStatus: "pushed", stageDeliveryError: null });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      setDelivery({ stageDeliveryStatus: "needs_retry", stageDeliveryError: error });
+      setDeliveryError(error);
+    } finally {
+      setDeliveryBusy(false);
+    }
+  }
 
   return (
     <div className="w-full max-w-xl rounded-lg border bg-card p-4">
@@ -110,6 +192,32 @@ export function GenerationCard({
 
       {done && (
         <div className="mt-3 space-y-3">
+          {delivery?.stageDeliveryStatus === "pending" && (
+            <p className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              舞台同步中…
+            </p>
+          )}
+          {delivery?.stageDeliveryStatus === "pushed" && (
+            <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+              已推送到 Folia 舞台
+            </p>
+          )}
+          {delivery?.stageDeliveryStatus === "needs_retry" && (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="min-w-0 text-sm text-amber-700 dark:text-amber-300">
+                {deliveryError ?? delivery.stageDeliveryError ?? "Stage 未就绪，稍后可重推"}
+              </p>
+              <button
+                type="button"
+                disabled={deliveryBusy}
+                onClick={() => void retryStageDelivery()}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-amber-500/50 bg-background px-2.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-500/20 disabled:opacity-60 dark:text-amber-200"
+              >
+                <RefreshCw className={deliveryBusy ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+                重推舞台
+              </button>
+            </div>
+          )}
           {autoPlayBlocked && variants[0] && (
             <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
               <p className="text-sm text-amber-700 dark:text-amber-300">

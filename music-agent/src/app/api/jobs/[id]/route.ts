@@ -3,9 +3,7 @@ import { db, schema } from '@/lib/db';
 import { getProvider } from '@/lib/providers';
 import {
   buildTranslationLines,
-  coaxAlignedLyrics,
-  makeLrc,
-  parseLyricLines,
+  resolveLyricsTimeline,
   type LyricsLine,
 } from '@/lib/audio/lrc';
 import { persistValidatedGeneratedSong } from '@/lib/media-output';
@@ -112,22 +110,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
               ),
             );
           const durationSec = job.result[0].durationSec;
-          // 词级对齐优先（真实后端），失败/不支持时回退均分行
+          // 词级对齐优先（真实后端）；无效或失败时回退结构感知 Mock 分配
           let lrc: LyricsLine[] = [];
           try {
             const aligned = await provider.getTimestampedLyrics?.(
               jobRow.id,
               job.result[0].audioId ?? '',
             );
-            // 共轴：上游 ASR 行（文本漂移/混入结构标记）→ 用户写的主歌词文本 + 真实时间戳
-            if (aligned && aligned.length > 0) {
-              lrc = coaxAlignedLyrics(songRow.lyrics ?? '', aligned);
-            }
+            lrc = resolveLyricsTimeline({
+              lyrics: songRow.lyrics ?? '',
+              durationSec,
+              alignedLyrics: aligned,
+            });
           } catch {
             // 回退
           }
-          if (lrc.length === 0 && durationSec > 0) {
-            lrc = makeLrc(parseLyricLines(songRow.lyrics ?? ''), durationSec);
+          if (lrc.length === 0) {
+            lrc = resolveLyricsTimeline({
+              lyrics: songRow.lyrics ?? '',
+              durationSec,
+            });
           }
           // 翻译共轴：主歌词行序映射（真实对齐优先；行数不一致按 min 截断，Task 10 验收核对）
           const tLrc = lrc.length
@@ -168,6 +170,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                   lyricsLrc: lrc.length ? JSON.stringify(lrc) : null,
                   lyricsTlrc: tLrc.length ? JSON.stringify(tLrc) : null,
                   error: null,
+                  stageDeliveryStatus: 'pending',
+                  stageDeliveryError: null,
+                  stageDeliveryUpdatedAt: now,
                   updatedAt: now,
                 })
                 .where(

@@ -1,0 +1,71 @@
+{
+  "viewport": {
+    "innerWidth": 390,
+    "devicePixelRatio": 1
+  },
+  "document": {
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "clientHeight": 844,
+    "scrollHeight": 844
+  },
+  "main": {
+    "clientHeight": 675,
+    "scrollHeight": 675,
+    "scrollTop": 0,
+    "clientWidth": 390,
+    "scrollWidth": 390
+  },
+  "provider": "Mock 生成",
+  "panels": [
+    {
+      "index": 0,
+      "tag": "aside",
+      "overflowY": "auto",
+      "clientHeight": 126,
+      "scrollHeight": 170,
+      "clientWidth": 346,
+      "scrollWidth": 346,
+      "rect": {
+        "left": 16,
+        "top": 173,
+        "right": 374,
+        "bottom": 300.75
+      }
+    },
+    {
+      "index": 1,
+      "tag": "section",
+      "overflowY": "hidden",
+      "clientHeight": 168,
+      "scrollHeight": 168,
+      "clientWidth": 356,
+      "scrollWidth": 356,
+      "rect": {
+        "left": 16,
+        "top": 316.75,
+        "right": 374,
+        "bottom": 487.078125
+      }
+    },
+    {
+      "index": 2,
+      "tag": "aside",
+      "overflowY": "auto",
+      "clientHeight": 213,
+      "scrollHeight": 602,
+      "clientWidth": 348,
+      "scrollWidth": 348,
+      "rect": {
+        "left": 16,
+        "top": 503.078125,
+        "right": 374,
+        "bottom": 715.9921875
+      }
+    }
+  ],
+  "internalChatScroller": {
+    "clientHeight": 86,
+    "scrollHeight": 1334
+  }
+}

@@ -1,3 +1,6 @@
+import { detectLyricLanguage } from '@/lib/audio/lyric-language';
+import { hasCompleteTranslationPairs } from '@/lib/audio/lrc';
+
 export type GenerationRequestDimension = 'style' | 'mood' | 'structure';
 
 export interface GenerationRequestInput {
@@ -81,5 +84,14 @@ export function assertGenerationRequestComplete(input: GenerationRequestInput): 
   const labels = missing.map((dimension) => DIMENSION_LABELS[dimension]).join('、');
   throw new Error(
     `创作需求不完整：缺${labels}。请先给用户 2-3 个方向选项并等待确认，不要直接调用 generate_music。`,
+  );
+}
+
+export function assertJapaneseTranslationComplete(lyrics: string): void {
+  if (detectLyricLanguage(lyrics) !== 'japanese') return;
+  if (hasCompleteTranslationPairs(lyrics)) return;
+
+  throw new Error(
+    '日文歌词缺少逐行中文翻译。请为每一行日文歌词补充「// 中文翻译」，确认后再调用 generate_music。',
   );
 }

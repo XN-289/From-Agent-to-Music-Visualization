@@ -20,6 +20,10 @@ const STAGE_MULTIPART_FIELD_COUNT_LIMIT = 10;
 const STAGE_SESSION_RETENTION_LIMIT = 12;
 const STAGE_PLAY_REQUEST_TIMEOUT_MS = 15_000;
 const STAGE_PLAYER_REQUEST_TIMEOUT_MS = 10_000;
+const STAGE_EXPORT_STARTUP_TIMEOUT_MS = 15_000;
+const STAGE_EXPORT_ORIENTATIONS = Object.freeze(['landscape', 'portrait']);
+const STAGE_EXPORT_STATUS_VALUES = new Set(['running', 'succeeded', 'failed', 'cancelled']);
+const STAGE_EXPORT_PHASE_VALUES = new Set(['queued', 'preparing', 'countdown', 'recording', 'finalizing']);
 const STAGE_PLAYER_QUEUE_DEFAULT_LIMIT = 100;
 const STAGE_PLAYER_QUEUE_MAX_LIMIT = 500;
 const STAGE_LYRICS_FORMAT_VALUES = new Set(['lrc', 'enhanced-lrc', 'vtt', 'yrc', 'qrc']);
@@ -239,6 +243,7 @@ function createStageApi({
   defaultStageApiPort,
   getNeteasePort,
   searchStageSongs,
+  openExportDirectory = null,
 }) {
   let stageServer = null;
   let stageLyricsSession = null;
@@ -260,6 +265,9 @@ function createStageApi({
   let stagePlayerQueueKey = null;
   let stagePlayerPlaybackKey = null;
   let musicMetadataModulePromise = null;
+  let stageExportJob = null;
+  let stageExportPendingCommand = null;
+  let stageExportStartupTimeoutId = null;
 
   const logStage = (level, message, details) => {
     const method = typeof console[level] === 'function' ? console[level] : console.log;
@@ -679,6 +687,38 @@ function createStageApi({
     }
   };
 
+  const tryDeliverPendingStageExportCommand = () => {
+    if (
+      !stageExportPendingCommand ||
+      !stageExportJob ||
+      stageExportJob.status !== 'running' ||
+      stageExportJob.phase !== 'queued'
+    ) {
+      return false;
+    }
+
+    const expectedCurrentId = String(-Math.floor(stageMediaSession?.updatedAt || 0));
+    const snapshotMatchesSession = (
+      stagePlayerSnapshot?.playbackContext === 'stage-session' &&
+      stagePlayerSnapshot?.current?.id === expectedCurrentId &&
+      Math.abs((stagePlayerSnapshot?.durationMs || 0) - (stageMediaSession?.durationMs || 0)) <= 500
+    );
+    if (!snapshotMatchesSession) {
+      return false;
+    }
+
+    const mainWindow = getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return false;
+    }
+
+    const { command, jobId } = stageExportPendingCommand;
+    stageExportPendingCommand = null;
+    mainWindow.webContents.send('remote-control-command', command);
+    logStage('info', 'Delivered Stage export command after renderer readiness.', { jobId });
+    return true;
+  };
+
   const publishStagePlayerSnapshot = (snapshot, options = {}) => {
     const previousSnapshot = stagePlayerSnapshot;
     stagePlayerSnapshot = normalizeStagePlayerSnapshot(snapshot);
@@ -699,6 +739,7 @@ function createStageApi({
     stagePlayerTrackKey = nextTrackKey;
     stagePlayerQueueKey = nextQueueKey;
     stagePlayerPlaybackKey = nextPlaybackKey;
+    tryDeliverPendingStageExportCommand();
     return status;
   };
 
@@ -814,6 +855,153 @@ function createStageApi({
     return stageSessionAssetIndex.get(sessionId) || null;
   };
 
+  const sanitizeStageExportFileName = (value) => {
+    const normalized = normalizeStageText(value)
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+      .replace(/\s+/g, ' ')
+      .replace(/[. ]+$/, '');
+    return normalized || 'folia-export';
+  };
+
+  const buildStageExportOutputs = (outputDirectory, title) => STAGE_EXPORT_ORIENTATIONS.map((orientation) => {
+    const width = orientation === 'landscape' ? 1920 : 1080;
+    const height = orientation === 'landscape' ? 1080 : 1920;
+    const fileName = `${sanitizeStageExportFileName(title)}-${width}x${height}.mp4`;
+    return {
+      orientation,
+      width,
+      height,
+      fileName,
+      filePath: path.join(outputDirectory, fileName),
+      sizeBytes: null,
+    };
+  });
+
+  const finalizeStageExportJob = (status, error = null) => {
+    if (!stageExportJob) return null;
+    stageExportPendingCommand = null;
+    if (stageExportStartupTimeoutId !== null) {
+      clearTimeout(stageExportStartupTimeoutId);
+      stageExportStartupTimeoutId = null;
+    }
+    const now = Date.now();
+    stageExportJob = {
+      ...stageExportJob,
+      status,
+      finishedAt: now,
+      updatedAt: now,
+      ...(error ? { error } : {}),
+    };
+    return stageExportJob;
+  };
+
+  const scheduleStageExportStartupTimeout = (jobId) => {
+    if (stageExportStartupTimeoutId !== null) {
+      clearTimeout(stageExportStartupTimeoutId);
+    }
+
+    stageExportStartupTimeoutId = setTimeout(() => {
+      stageExportStartupTimeoutId = null;
+      if (
+        stageExportJob?.id === jobId &&
+        stageExportJob.status === 'running' &&
+        stageExportJob.phase === 'queued'
+      ) {
+        finalizeStageExportJob('failed', 'Folia renderer did not acknowledge the export command.');
+        logStage('error', 'Stage export startup handshake timed out.', { jobId });
+      }
+    }, STAGE_EXPORT_STARTUP_TIMEOUT_MS);
+  };
+
+  const normalizeStageExportOutputs = (outputs = []) => {
+    if (!Array.isArray(outputs)) return [];
+    return stageExportJob.outputs.map((expectedOutput) => {
+      const update = outputs.find((candidate) => candidate?.orientation === expectedOutput.orientation);
+      return {
+        ...expectedOutput,
+        ...(Number.isFinite(Number(update?.sizeBytes)) && Number(update.sizeBytes) >= 0
+          ? { sizeBytes: Number(update.sizeBytes) }
+          : {}),
+      };
+    });
+  };
+
+  const updateStageExportJob = async (update = {}) => {
+    if (!stageExportJob || stageExportJob.status !== 'running') return false;
+    if (normalizeStageText(update.jobId) !== stageExportJob.id) return false;
+
+    const status = STAGE_EXPORT_STATUS_VALUES.has(update.status) ? update.status : stageExportJob.status;
+    if (
+      stageExportStartupTimeoutId !== null &&
+      status === 'running' &&
+      STAGE_EXPORT_PHASE_VALUES.has(update.phase) &&
+      update.phase !== 'queued'
+    ) {
+      stageExportPendingCommand = null;
+      clearTimeout(stageExportStartupTimeoutId);
+      stageExportStartupTimeoutId = null;
+    }
+    if (status !== 'running') {
+      if (status === 'succeeded') {
+        const outputs = normalizeStageExportOutputs(update.outputs);
+        try {
+          const verifiedOutputs = [];
+          for (const output of outputs) {
+            const stat = await fsp.stat(output.filePath);
+            if (!stat.isFile() || stat.size <= 0) {
+              throw new Error(`Export output is empty or missing: ${output.fileName}`);
+            }
+            verifiedOutputs.push({ ...output, sizeBytes: stat.size });
+          }
+          const now = Date.now();
+          stageExportJob = {
+            ...stageExportJob,
+            status: 'succeeded',
+            phase: 'finalizing',
+            orientation: null,
+            progress: 1,
+            outputs: verifiedOutputs,
+            finishedAt: now,
+            updatedAt: now,
+            error: null,
+          };
+          return true;
+        } catch (error) {
+          finalizeStageExportJob('failed', error instanceof Error ? error.message : String(error));
+          return true;
+        }
+      }
+
+      finalizeStageExportJob(
+        status,
+        status === 'failed'
+          ? normalizeStageText(update.error) || 'Folia export failed.'
+          : null,
+      );
+      return true;
+    }
+
+    const now = Date.now();
+    stageExportJob = {
+      ...stageExportJob,
+      status: 'running',
+      phase: STAGE_EXPORT_PHASE_VALUES.has(update.phase) ? update.phase : stageExportJob.phase,
+      orientation: STAGE_EXPORT_ORIENTATIONS.includes(update.orientation)
+        ? update.orientation
+        : stageExportJob.orientation,
+      progress: Number.isFinite(Number(update.progress))
+        ? Math.min(1, Math.max(0, Number(update.progress)))
+        : stageExportJob.progress,
+      elapsed: Number.isFinite(Number(update.elapsed))
+        ? Math.max(0, Number(update.elapsed))
+        : stageExportJob.elapsed,
+      outputs: Array.isArray(update.outputs) ? normalizeStageExportOutputs(update.outputs) : stageExportJob.outputs,
+      error: normalizeStageText(update.error) || null,
+      updatedAt: now,
+    };
+    return true;
+  };
+
   const clearPendingExternalPlayRequests = (reason) => {
     for (const [requestId, entry] of Array.from(pendingExternalPlayRequests.entries())) {
       clearTimeout(entry.timer);
@@ -840,6 +1028,12 @@ function createStageApi({
   };
 
   const clearStageState = async () => {
+    if (stageExportJob?.status === 'running') {
+      throw new StageApiError('Cannot clear Stage state while an export is running.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_SESSION_LOCKED',
+      });
+    }
     await clearStageStateData();
     broadcastStageEvent('stage-session-cleared');
     broadcastStageEvent('stage-session-updated');
@@ -1114,6 +1308,7 @@ function createStageApi({
         coverUrl: typeof payload.coverUrl === 'string' ? payload.coverUrl : '',
         audioUrl: typeof payload.audioUrl === 'string' ? payload.audioUrl : '',
         lyricsText: typeof payload.lyricsText === 'string' ? payload.lyricsText : '',
+        translationLyrics: typeof payload.translationLyrics === 'string' ? payload.translationLyrics : '',
         lyricsFormat: typeof payload.lyricsFormat === 'string' ? payload.lyricsFormat : '',
         visualConfig: payload.visualConfig ?? '',
       },
@@ -1207,6 +1402,7 @@ function createStageApi({
     const requestedCoverUrl = normalizeStageText(fields.coverUrl);
     const requestedAudioUrl = normalizeStageText(fields.audioUrl);
     const requestedLyricsText = normalizeStageText(fields.lyricsText);
+    const requestedTranslationLyrics = normalizeStageText(fields.translationLyrics);
     const requestedLyricsFormat = normalizeStageText(fields.lyricsFormat);
     const audioFile = files.audioFile || null;
     const lyricsFile = files.lyricsFile || null;
@@ -1247,6 +1443,7 @@ function createStageApi({
       hasAudioFile: Boolean(audioFile),
       hasLyricsText: Boolean(requestedLyricsText),
       hasLyricsFile: Boolean(lyricsFile),
+      hasTranslationLyrics: Boolean(requestedTranslationLyrics),
       hasCoverUrl: Boolean(requestedCoverUrl),
       hasCoverFile: Boolean(coverFile),
     });
@@ -1276,6 +1473,7 @@ function createStageApi({
     let resolvedCoverUrl = requestedCoverUrl || null;
     let resolvedCoverMimeType = coverFile?.contentType || undefined;
     let resolvedLyricsText = requestedLyricsText;
+    let resolvedTranslationLyrics = requestedTranslationLyrics;
     let resolvedAudioPath = null;
     let resolvedCoverPath = coverFile?.filePath || null;
 
@@ -1289,6 +1487,11 @@ function createStageApi({
     } else if (!resolvedLyricsText && embeddedMetadata?.lyrics) {
       resolvedLyricsText = normalizeStageText(embeddedMetadata.lyrics);
       logStage('info', 'Using embedded lyrics from uploaded audio metadata.');
+    }
+
+    if (!resolvedTranslationLyrics && embeddedMetadata?.translationLyrics) {
+      resolvedTranslationLyrics = normalizeStageText(embeddedMetadata.translationLyrics);
+      logStage('info', 'Using embedded translation lyrics from uploaded audio metadata.');
     }
 
     const normalizedResolvedLyricsText = normalizeStageText(resolvedLyricsText);
@@ -1322,7 +1525,7 @@ function createStageApi({
       audioMimeType: audioFile?.contentType || undefined,
       coverMimeType: resolvedCoverMimeType,
       lyricsText: normalizedResolvedLyricsText || null,
-      translationLyrics: normalizeStageText(embeddedMetadata?.translationLyrics) || null,
+      translationLyrics: normalizeStageText(resolvedTranslationLyrics) || null,
       lyricsFormat: detectedLyricsFormat || null,
       visualConfig,
       updatedAt: sessionVersion,
@@ -1720,6 +1923,144 @@ function createStageApi({
     }
   };
 
+  const startStageExportJob = async (req) => {
+    const payload = await readStageJsonPayload(
+      req,
+      'Failed to parse Stage export JSON payload.',
+      'INVALID_STAGE_EXPORT_JSON',
+    );
+    const songId = normalizeStageText(payload.songId);
+    const sessionId = normalizeStageText(payload.sessionId);
+    if (!songId) {
+      throw createStageValidationError('Stage export requires a songId.', 'INVALID_STAGE_EXPORT_SONG_ID');
+    }
+    if (!sessionId) {
+      throw createStageValidationError('Stage export requires a sessionId.', 'INVALID_STAGE_EXPORT_SESSION_ID');
+    }
+    if (stageActiveEntryKind !== 'media' || !stageMediaSession) {
+      throw new StageApiError('An active Stage media session is required before export.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_SESSION_UNAVAILABLE',
+      });
+    }
+    if (stageMediaSession.id !== sessionId) {
+      throw new StageApiError('The Stage session changed before export started.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_SESSION_MISMATCH',
+      });
+    }
+    const durationMs = normalizeStageInteger(stageMediaSession.durationMs, 0);
+    if (durationMs <= 0) {
+      throw new StageApiError('The active Stage media session has no usable duration.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_DURATION_UNAVAILABLE',
+      });
+    }
+    if (stageExportJob?.status === 'running') {
+      throw new StageApiError('A Stage export job is already running.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_ALREADY_RUNNING',
+      });
+    }
+
+    const mainWindow = getMainWindow();
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      throw new StageApiError('Folia main window is unavailable for Stage export.', {
+        statusCode: 503,
+        code: 'STAGE_EXPORT_WINDOW_UNAVAILABLE',
+      });
+    }
+
+    const title = stageMediaSession.title || 'Stage Session';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const outputDirectory = path.join(
+      app.getPath('videos'),
+      'Folia Exports',
+      `${stamp}-${sanitizeStageExportFileName(title)}`,
+    );
+    await fsp.mkdir(outputDirectory, { recursive: true });
+
+    const now = Date.now();
+    stageExportJob = {
+      id: `stage-export-${now}-${crypto.randomUUID()}`,
+      songId,
+      sessionId,
+      title,
+      status: 'running',
+      phase: 'queued',
+      orientation: null,
+      progress: 0,
+      elapsed: 0,
+      duration: durationMs / 1000,
+      outputDirectory,
+      outputs: buildStageExportOutputs(outputDirectory, title),
+      startedAt: now,
+      updatedAt: now,
+      finishedAt: null,
+      error: null,
+    };
+
+    const command = {
+      type: 'start-batch-export',
+      job: stageExportJob,
+    };
+    stageExportPendingCommand = {
+      jobId: stageExportJob.id,
+      command,
+    };
+    tryDeliverPendingStageExportCommand();
+    scheduleStageExportStartupTimeout(stageExportJob.id);
+    logStage('info', 'Started Stage export job.', {
+      jobId: stageExportJob.id,
+      songId,
+      sessionId,
+      outputDirectory,
+    });
+    return { job: stageExportJob };
+  };
+
+  const cancelStageExportJob = () => {
+    if (!stageExportJob || stageExportJob.status !== 'running') {
+      return { job: stageExportJob };
+    }
+
+    const mainWindow = getMainWindow();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('remote-control-command', {
+        type: 'cancel-batch-export',
+        jobId: stageExportJob.id,
+      });
+    }
+    finalizeStageExportJob('cancelled');
+    logStage('info', 'Cancelled Stage export job.', { jobId: stageExportJob.id });
+    return { job: stageExportJob };
+  };
+
+  const openStageExportDirectory = async () => {
+    if (!stageExportJob || stageExportJob.status !== 'succeeded') {
+      throw new StageApiError('A successful Stage export job is required before opening its folder.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_FOLDER_UNAVAILABLE',
+      });
+    }
+    if (typeof openExportDirectory !== 'function') {
+      throw new StageApiError('Opening export folders is unavailable in this Folia runtime.', {
+        statusCode: 501,
+        code: 'STAGE_EXPORT_OPEN_UNAVAILABLE',
+      });
+    }
+
+    const error = await openExportDirectory(stageExportJob.outputDirectory);
+    if (normalizeStageText(error)) {
+      throw new StageApiError('Failed to open the Stage export folder.', {
+        statusCode: 500,
+        code: 'STAGE_EXPORT_OPEN_FAILED',
+        details: { reason: error },
+      });
+    }
+    return { opened: true, job: stageExportJob };
+  };
+
   const handleStagePlayerSearchRequest = async (req, { deprecated = false } = {}) => {
     const payload = await readStageJsonPayload(
       req,
@@ -1988,6 +2329,38 @@ function createStageApi({
       return;
     }
 
+    if (pathname === '/stage/export/job' && req.method === 'POST') {
+      sendStageJson(res, 202, await startStageExportJob(req));
+      return;
+    }
+
+    if (pathname === '/stage/export/status' && req.method === 'GET') {
+      sendStageJson(res, 200, { job: stageExportJob });
+      return;
+    }
+
+    if (pathname === '/stage/export/cancel' && req.method === 'POST') {
+      sendStageJson(res, 200, cancelStageExportJob());
+      return;
+    }
+
+    if (pathname === '/stage/export/open' && req.method === 'POST') {
+      sendStageJson(res, 200, await openStageExportDirectory());
+      return;
+    }
+
+    if (
+      stageExportJob?.status === 'running' &&
+      ((pathname === '/stage/state' && req.method === 'DELETE') ||
+        (pathname === '/stage/lyrics' && req.method === 'POST') ||
+        (pathname === '/stage/session' && req.method === 'POST'))
+    ) {
+      throw new StageApiError('Cannot change the active Stage session while an export is running.', {
+        statusCode: 409,
+        code: 'STAGE_EXPORT_SESSION_LOCKED',
+      });
+    }
+
     if (pathname === '/stage/player/status' && req.method === 'GET') {
       sendStageJson(res, 200, buildStagePlayerStatus());
       return;
@@ -2108,6 +2481,9 @@ function createStageApi({
 
   const stopStageServer = async () => {
     if (!stageServer) {
+      if (stageExportJob?.status === 'running') {
+        finalizeStageExportJob('failed', 'Folia Stage stopped during export.');
+      }
       await clearStageStateData();
       closeStagePlayerWebSockets();
       return;
@@ -2116,6 +2492,9 @@ function createStageApi({
     clearPendingExternalPlayRequests('Stage server stopped.');
     clearPendingStagePlayerRequests(pendingStagePlayerControlRequests, 'Stage server stopped.', 'STAGE_PLAYER_CONTROL_UNAVAILABLE');
     clearPendingStagePlayerRequests(pendingStagePlayerQueueRequests, 'Stage server stopped.', 'STAGE_PLAYER_QUEUE_UNAVAILABLE');
+    if (stageExportJob?.status === 'running') {
+      finalizeStageExportJob('failed', 'Folia Stage stopped during export.');
+    }
     closeStagePlayerWebSockets();
 
     await new Promise((resolve) => {
@@ -2233,6 +2612,7 @@ function createStageApi({
     syncStageModeState,
     startStageServerIfNeeded,
     stopStageServer,
+    updateStageExportJob,
   };
 }
 

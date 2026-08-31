@@ -16,5 +16,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     prompt: song.prompt,
     styleTags: song.styleTags,
     status: song.status,
+    stageDeliveryStatus: song.stageDeliveryStatus,
+    stageDeliveryError: song.stageDeliveryError,
+    stageDeliveryUpdatedAt: song.stageDeliveryUpdatedAt?.getTime() ?? null,
   });
 }

@@ -4,6 +4,9 @@ import type { VisualRecipe } from '@/lib/visual-recipe';
 
 // P0 用 SQLite 起步（务实 MVP，零部署依赖）；Drizzle 迁移到 Postgres 只需换驱动 + 微调列类型。
 
+export const STAGE_DELIVERY_STATUSES = ['pending', 'pushed', 'needs_retry'] as const;
+export type StageDeliveryStatus = (typeof STAGE_DELIVERY_STATUSES)[number];
+
 export const chats = sqliteTable('chats', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
@@ -37,6 +40,16 @@ export const songs = sqliteTable(
     lyricsTlrc: text('lyrics_tlrc'),
     /** Studio Mode 的视觉配方：预设、能量、色温与高潮氛围 */
     visualRecipe: text('visual_recipe', { mode: 'json' }).$type<VisualRecipe>(),
+    /** Stage 交付是生成后的同步动作，不影响生成事务终态 */
+    stageDeliveryStatus: text('stage_delivery_status', {
+      enum: STAGE_DELIVERY_STATUSES,
+    })
+      .notNull()
+      .default('pending'),
+    stageDeliveryError: text('stage_delivery_error'),
+    stageDeliveryUpdatedAt: integer('stage_delivery_updated_at', {
+      mode: 'timestamp_ms',
+    }),
     styleTags: text('style_tags', { mode: 'json' }).$type<string[]>(),
     prompt: text('prompt'),
     instrumental: integer('instrumental', { mode: 'boolean' }).notNull().default(false),

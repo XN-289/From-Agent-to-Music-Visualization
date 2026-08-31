@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { pollJob } from "@/lib/client";
 import type { LyricsLine } from "@/lib/audio/lrc";
+import type { StageDeliveryStatus } from "@/lib/db/schema";
 import type { GenerationStatus } from "@/lib/generation-state";
+import type { VisualRecipe } from "@/lib/visual-recipe";
+import { FoliaExportPanel } from "@/components/studio/folia-export-panel";
 import { usePlayerStore } from "@/components/player/player-store";
 import { WaveformPlayer } from "@/components/player/waveform-player";
 import { LyricsPanel } from "@/components/song/lyrics-panel";
@@ -27,7 +30,11 @@ export interface SongDetailData {
   instrumental: boolean;
   status: GenerationStatus;
   progress: number;
+  visualRecipe: VisualRecipe | null;
   stage: string | null;
+  stageDeliveryStatus: StageDeliveryStatus;
+  stageDeliveryError: string | null;
+  stageDeliveryUpdatedAt: number | null;
   variants: { id: string; audioUrl: string; title: string; durationSec: number; audioId?: string }[] | null;
   error: string | null;
   createdAt: number;
@@ -70,6 +77,8 @@ export function SongDetailClient({
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
   const [pushSuccess, setPushSuccess] = useState(false);
+  const [deliveryStatusOverride, setDeliveryStatusOverride] = useState<StageDeliveryStatus | null>(null);
+  const deliveryStatus = deliveryStatusOverride ?? song.stageDeliveryStatus;
 
   // 实时进度（M3）：轮询过程中用本地状态刷新进度条，服务端 props 只在终态时刷新
   const [live, setLive] = useState<{ progress: number; stage: string } | null>(null);
@@ -106,6 +115,31 @@ export function SongDetailClient({
       controller.abort();
     };
   }, [song.status, jobId, router]);
+
+  useEffect(() => {
+    if (song.status !== "completed" || song.stageDeliveryStatus !== "pending") return;
+    let cancelled = false;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      if (attempts > 10) {
+        clearInterval(timer);
+        return;
+      }
+      void fetch(`/api/songs/${song.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { stageDeliveryStatus?: StageDeliveryStatus } | null) => {
+          if (cancelled || !data?.stageDeliveryStatus) return;
+          setDeliveryStatusOverride(data.stageDeliveryStatus);
+          if (data.stageDeliveryStatus !== "pending") clearInterval(timer);
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [song.id, song.status, song.stageDeliveryStatus]);
 
   async function runIteration(
     kind: "extend" | "cover" | "replace",
@@ -189,6 +223,7 @@ export function SongDetailClient({
       };
       if (!res.ok || !data.ok) throw new Error(data.error ?? `请求失败（${res.status}）`);
       setPushSuccess(true);
+      setDeliveryStatusOverride("pushed");
       if (data.foliaWebUrl) {
         window.open(data.foliaWebUrl, "_blank", "noopener,noreferrer");
       }
@@ -225,6 +260,12 @@ export function SongDetailClient({
         )}
         {song.status === "failed" && <Badge className="bg-destructive text-white">失败</Badge>}
         {song.status === "completed" && parent && <Badge variant="outline">迭代版本</Badge>}
+        {song.status === "completed" && deliveryStatus === "needs_retry" && (
+          <Badge className="bg-amber-500 text-white">Stage 待重推</Badge>
+        )}
+        {song.status === "completed" && deliveryStatus === "pushed" && (
+          <Badge className="bg-emerald-600 text-white">已推送 Stage</Badge>
+        )}
       </div>
       {song.prompt && <p className="mt-1 text-sm text-muted-foreground">{song.prompt}</p>}
 
@@ -245,6 +286,19 @@ export function SongDetailClient({
           >
             让 Agent 帮你诊断修复 →
           </Link>
+        </div>
+      )}
+
+      {song.status === "completed" && deliveryStatus === "needs_retry" && (
+        <div className="mt-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Stage 未就绪或上次推送未完成，可稍后重推。
+          </p>
+          {song.stageDeliveryError && (
+            <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">
+              {song.stageDeliveryError}
+            </p>
+          )}
         </div>
       )}
 
@@ -431,12 +485,23 @@ export function SongDetailClient({
         </section>
 
         <aside>
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">同步歌词</h2>
-          {lrc.length > 0 ? (
-            <LyricsPanel lines={lrc} />
-          ) : (
-            <p className="text-sm text-muted-foreground">暂无时间戳歌词</p>
-          )}
+          <div className="space-y-4">
+            <FoliaExportPanel
+              key={song.id}
+              songId={song.id}
+              savedRecipe={song.visualRecipe}
+              disabled={song.status !== "completed" || !song.visualRecipe}
+              disabledHint={song.status === "completed" && !song.visualRecipe ? "请先在 Studio 保存视觉配方" : undefined}
+            />
+            <div>
+              <h2 className="mb-2 text-sm font-medium text-muted-foreground">同步歌词</h2>
+              {lrc.length > 0 ? (
+                <LyricsPanel lines={lrc} />
+              ) : (
+                <p className="text-sm text-muted-foreground">暂无时间戳歌词</p>
+              )}
+            </div>
+          </div>
         </aside>
       </div>
 

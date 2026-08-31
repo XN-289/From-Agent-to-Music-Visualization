@@ -24,8 +24,12 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { Type } from '@sinclair/typebox';
 import { getProvider } from '@/lib/providers';
-import { SYSTEM_PROMPT } from './prompt';
-import { assertGenerationRequestComplete } from './generation-request';
+import { buildSystemPrompt } from './prompt';
+import { resolvePromptStage, type PromptStage } from './prompt-stage';
+import {
+  assertGenerationRequestComplete,
+  assertJapaneseTranslationComplete,
+} from './generation-request';
 import { stripTranslationLines } from '@/lib/audio/lrc';
 import { db, schema } from '@/lib/db';
 import { and, desc, eq } from 'drizzle-orm';
@@ -69,6 +73,7 @@ const generateMusicToolDef = defineTool({
   }),
   execute: async (_toolCallId, params) => {
     assertGenerationRequestComplete(params);
+    assertJapaneseTranslationComplete(params.lyrics);
     spendPaidCallBudget(); // 付费调用预算：防注入批量烧钱
     assertFirstSongConfirmed(budgetAls.getStore()?.chatId); // 首首歌必须先经用户确认
     const { jobId, songId } = await submitGeneration(
@@ -294,11 +299,12 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 const MAX_CHATS = 10;
 
 interface ChatSessionEntry {
-  sessionPromise: Promise<AgentSession>;
+  stage: PromptStage | null;
+  sessionPromise: Promise<AgentSession> | null;
   chain: Promise<unknown>; // 该 chat 内 turn 串行化（pi followUp 不等待完成，并发会串流）
   running: boolean;
   listeners: Set<Listener>;
-  subscribed: boolean;
+  subscribedSession: AgentSession | null;
   lastUsed: number;
 }
 
@@ -343,18 +349,39 @@ function getChatEntry(chatId: string): ChatSessionEntry {
     if (oldestKey) chatSessions.delete(oldestKey);
   }
   const entry: ChatSessionEntry = {
-    sessionPromise: createSession(chatId),
+    stage: null,
+    sessionPromise: null,
     chain: Promise.resolve(),
     running: false,
     listeners: new Set(),
-    subscribed: false,
+    subscribedSession: null,
     lastUsed: Date.now(),
   };
   chatSessions.set(chatId, entry);
   return entry;
 }
 
-function createSession(chatId: string): Promise<AgentSession> {
+function activateStage(
+  entry: ChatSessionEntry,
+  chatId: string,
+  stage: PromptStage,
+): Promise<AgentSession> {
+  if (entry.stage === stage && entry.sessionPromise) return entry.sessionPromise;
+
+  entry.stage = stage;
+  const sessionPromise = createSession(chatId, stage);
+  entry.sessionPromise = sessionPromise;
+  entry.subscribedSession = null;
+  return sessionPromise.catch((error: unknown) => {
+    if (entry.sessionPromise === sessionPromise) {
+      entry.stage = null;
+      entry.sessionPromise = null;
+    }
+    throw error;
+  });
+}
+
+function createSession(chatId: string, stage: PromptStage): Promise<AgentSession> {
   const cwd = process.cwd();
   const agentDir = path.join(cwd, 'data', 'pi-agent');
   const sessionDir = chatSessionDir(chatId);
@@ -416,7 +443,7 @@ function createSession(chatId: string): Promise<AgentSession> {
     const resourceLoader = new DefaultResourceLoader({
       cwd,
       agentDir,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: buildSystemPrompt(stage),
       noContextFiles: true,
       noSkills: true,
       noPromptTemplates: true,
@@ -516,13 +543,29 @@ export function spendPaidCallBudget(): void {
   }
 }
 
+function chatHasSongs(chatId: string): boolean {
+  return db
+    .select({ id: schema.songs.id })
+    .from(schema.songs)
+    .where(eq(schema.songs.chatId, chatId))
+    .limit(1)
+    .all()
+    .length > 0;
+}
+
 export async function queuePrompt(chatId: string, text: string): Promise<void> {
   const entry = getChatEntry(chatId);
   const run = entry.chain.then(async () => {
     entry.running = true;
     globalBudget.calls = 0; // 兜底计数器的重置（ALS 正常时每个 turn 有自己的 store）
     try {
-      const session = await entry.sessionPromise;
+      const stage = resolvePromptStage({
+        text,
+        currentStage: entry.stage,
+        hasExistingSong: chatHasSongs(chatId),
+      });
+      const session = await activateStage(entry, chatId, stage);
+      await ensureSubscription(entry);
       await budgetAls.run({ calls: 0, chatId }, () =>
         session.prompt(text, { streamingBehavior: 'followUp' }),
       );
@@ -541,18 +584,20 @@ type SessionEvent = AgentSessionEvent;
 type Listener = (event: SessionEvent) => void;
 
 async function ensureSubscription(entry: ChatSessionEntry) {
-  if (entry.subscribed) return;
-  const session = await entry.sessionPromise;
+  if (!entry.sessionPromise) return;
+  const sessionPromise = entry.sessionPromise;
+  const session = await sessionPromise;
+  if (entry.sessionPromise !== sessionPromise || entry.subscribedSession === session) return;
   session.subscribe((event) => {
     for (const cb of entry.listeners) cb(event);
   });
-  entry.subscribed = true; // 订阅成功后才置位，失败时下次 addSessionListener 会重试
+  // 订阅成功后才绑定会话，阶段切换后旧订阅会被新 session 的广播接管。
+  entry.subscribedSession = session;
 }
 
 export function addSessionListener(chatId: string, cb: Listener): () => void {
   const entry = getChatEntry(chatId);
   entry.listeners.add(cb);
-  void ensureSubscription(entry);
   return () => {
     entry.listeners.delete(cb);
   };

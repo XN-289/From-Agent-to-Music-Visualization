@@ -37,6 +37,37 @@ export interface VideoExportState {
 
 export type VideoExportStartMode = 'from-start' | 'current';
 
+export type BatchVideoExportStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type BatchVideoExportPhase = 'queued' | 'preparing' | 'countdown' | 'recording' | 'finalizing';
+
+export interface BatchVideoExportOutput {
+    orientation: 'landscape' | 'portrait';
+    width: number;
+    height: number;
+    fileName: string;
+    filePath: string;
+    sizeBytes: number | null;
+}
+
+export interface BatchVideoExportJob {
+    id: string;
+    songId: string;
+    sessionId: string;
+    title: string;
+    status: BatchVideoExportStatus;
+    phase: BatchVideoExportPhase;
+    orientation: 'landscape' | 'portrait' | null;
+    progress: number;
+    elapsed: number;
+    duration: number;
+    outputDirectory: string;
+    outputs: BatchVideoExportOutput[];
+    startedAt: number;
+    updatedAt: number;
+    finishedAt: number | null;
+    error: string | null;
+}
+
 export const DEFAULT_VIDEO_EXPORT_PRESET_VALUES: VideoExportPresetValues = [
     { width: 1280, height: 720 },
     { width: 1920, height: 1080 },

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areTranslationTimestampsAligned,
   buildTranslationLines,
   coaxAlignedLyrics,
+  hasCompleteTranslationPairs,
+  isValidTimestampedLyrics,
   mergeTranslations,
   parseLyricLines,
   parseLyricPairs,
+  resolveLyricsTimeline,
   stripTranslationLines,
   type LyricsLine,
 } from './lrc';
@@ -67,6 +71,51 @@ describe('buildTranslationLines', () => {
   it('歌词行数多于 lrc 行数时按 min 截断', () => {
     const t = buildTranslationLines(BILINGUAL, [lrc[0]]);
     expect(t).toEqual([{ startMs: 0, endMs: 4000, text: '晨光敲打着窗户' }]);
+  });
+});
+
+describe('translation contract', () => {
+  it('requires a Chinese translation for every Japanese lyric line', () => {
+    const complete = [
+      '[Verse 1]',
+      '夜風が答えを運ぶ',
+      '// 晚风带来答案',
+      '[Chorus]',
+      '君の声を探してる',
+      '// 我在寻找你的声音',
+    ].join('\n');
+    const incomplete = complete.replace('// 晚风带来答案\n', '');
+
+    expect(hasCompleteTranslationPairs(complete)).toBe(true);
+    expect(hasCompleteTranslationPairs(incomplete)).toBe(false);
+  });
+
+  it('keeps three original and translation subtitle timestamps exactly paired', () => {
+    const lrc: LyricsLine[] = [
+      { startMs: 0, endMs: 4000, text: '夜風が答えを運ぶ' },
+      { startMs: 4000, endMs: 8000, text: '君の声を探してる' },
+      { startMs: 8000, endMs: 12000, text: '夏はまだ続く' },
+    ];
+    const tLrc = buildTranslationLines(
+      [
+        '夜風が答えを運ぶ',
+        '// 晚风带来答案',
+        '君の声を探してる',
+        '// 我在寻找你的声音',
+        '夏はまだ続く',
+        '// 夏天还在继续',
+      ].join('\n'),
+      lrc,
+    );
+
+    expect(tLrc).toHaveLength(3);
+    expect(areTranslationTimestampsAligned(lrc, tLrc)).toBe(true);
+    expect(areTranslationTimestampsAligned(lrc, [...tLrc.slice(0, 2)])).toBe(false);
+    expect(
+      areTranslationTimestampsAligned(lrc, tLrc.map((line, index) => (
+        index === 1 ? { ...line, startMs: line.startMs + 301 } : line
+      ))),
+    ).toBe(false);
   });
 });
 
@@ -143,5 +192,115 @@ describe('coaxAlignedLyrics', () => {
       '木目に染み込んだ あなたの匂い',
       '私を 育て直すんだ',
     ]);
+  });
+});
+
+describe('resolveLyricsTimeline', () => {
+  const STRUCTURED_LYRICS = [
+    '[Intro]',
+    '夜明けのつぶやき',
+    '[Verse 1]',
+    '街の灯りが揺れる',
+    '君の声を思い出す',
+    '[Chorus]',
+    '夏の花火が上がる',
+    'この瞬間を忘れない',
+    '[Outro]',
+    'また明日',
+  ].join('\n');
+
+  const structuredExpected: LyricsLine[] = [
+    { startMs: 0, endMs: 1200, text: '夜明けのつぶやき' },
+    { startMs: 1200, endMs: 3200, text: '街の灯りが揺れる' },
+    { startMs: 3200, endMs: 5200, text: '君の声を思い出す' },
+    { startMs: 5200, endMs: 8000, text: '夏の花火が上がる' },
+    { startMs: 8000, endMs: 10800, text: 'この瞬間を忘れない' },
+    { startMs: 10800, endMs: 12000, text: 'また明日' },
+  ];
+
+  it('golden：结构歌词按段落权重生成完整期望时间轴', () => {
+    const lrc = resolveLyricsTimeline({ lyrics: STRUCTURED_LYRICS, durationSec: 12 });
+
+    expect(lrc).toEqual(structuredExpected);
+    expect(lrc[0].startMs).toBe(0);
+    expect(lrc.at(-1)?.endMs).toBe(12000);
+    expect(lrc.every((line, index) => (
+      index === 0 || line.startMs >= lrc[index - 1].endMs
+    ))).toBe(true);
+  });
+
+  it('无结构标记时保持已确认的均分 fallback', () => {
+    const lrc = resolveLyricsTimeline({
+      lyrics: ['一', '二', '三', '四'].join('\n'),
+      durationSec: 12,
+    });
+
+    expect(lrc).toEqual([
+      { startMs: 0, endMs: 3000, text: '一' },
+      { startMs: 3000, endMs: 6000, text: '二' },
+      { startMs: 6000, endMs: 9000, text: '三' },
+      { startMs: 9000, endMs: 12000, text: '四' },
+    ]);
+  });
+
+  it('有效真实时间轴优先于结构感知 fallback', () => {
+    const aligned: LyricsLine[] = [
+      { startMs: 1000, endMs: 3000, text: 'asr one' },
+      { startMs: 3500, endMs: 6500, text: 'asr two' },
+      { startMs: 7000, endMs: 10000, text: 'asr three' },
+      { startMs: 10100, endMs: 11800, text: 'asr four' },
+    ];
+
+    const lrc = resolveLyricsTimeline({
+      lyrics: [
+        '[Intro]',
+        '一',
+        '[Verse]',
+        '二',
+        '[Chorus]',
+        '三',
+        '[Outro]',
+        '四',
+      ].join('\n'),
+      durationSec: 12,
+      alignedLyrics: aligned,
+    });
+
+    expect(lrc.map((line) => ({ startMs: line.startMs, endMs: line.endMs }))).toEqual([
+      { startMs: 1000, endMs: 3000 },
+      { startMs: 3500, endMs: 6500 },
+      { startMs: 7000, endMs: 10000 },
+      { startMs: 10100, endMs: 11800 },
+    ]);
+  });
+
+  it('空、乱序、重叠、负数、倒置、越界与纯标记真实数据全部回退', () => {
+    const cases: LyricsLine[][] = [
+      [],
+      [
+        { startMs: 8000, endMs: 10000, text: 'a' },
+        { startMs: 1000, endMs: 3000, text: 'b' },
+      ],
+      [
+        { startMs: 0, endMs: 5000, text: 'a' },
+        { startMs: 4000, endMs: 8000, text: 'b' },
+      ],
+      [{ startMs: -1, endMs: 1000, text: 'a' }],
+      [{ startMs: 1000, endMs: 500, text: 'a' }],
+      [{ startMs: 0, endMs: 12001, text: 'a' }],
+      [
+        { startMs: 0, endMs: 1000, text: '[Intro]' },
+        { startMs: 1000, endMs: 2000, text: '[Chorus]' },
+      ],
+    ];
+
+    for (const aligned of cases) {
+      expect(isValidTimestampedLyrics(aligned, 12)).toBe(false);
+      expect(resolveLyricsTimeline({
+        lyrics: STRUCTURED_LYRICS,
+        durationSec: 12,
+        alignedLyrics: aligned,
+      })).toEqual(structuredExpected);
+    }
   });
 });

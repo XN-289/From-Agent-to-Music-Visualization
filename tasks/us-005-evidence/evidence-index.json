@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-08-31T06:53:39.105Z",
+  "files": [
+    {
+      "name": "studio-1440x900.jpg",
+      "bytes": 77142,
+      "height": 900,
+      "width": 1440,
+      "sha256": "82dcce0d19a1e5c2e05a227bd99e8821488f4c7d692a679d8aec24e37f34d90b"
+    },
+    {
+      "name": "studio-390x844.jpg",
+      "bytes": 29145,
+      "height": 844,
+      "width": 390,
+      "sha256": "6ccc9237ba72f523e74539f44b8b3ebe276eee163cb1e8aafa13d1a80ea4d445"
+    },
+    {
+      "name": "studio-preview-network-error-1440x900.jpg",
+      "bytes": 79235,
+      "height": 900,
+      "width": 1440,
+      "sha256": "bb3f07d7674fdd0a8a919e509c257f69c973420da15e2718f16629960c3e42b9"
+    },
+    {
+      "name": "studio-preview-retry-recovered-1440x900.jpg",
+      "bytes": 75552,
+      "height": 900,
+      "width": 1440,
+      "sha256": "a9199cb7f266e15082b7f508f99e2b1c8e4bc8698fc320c960a35bab66cbbd7f"
+    }
+  ]
+}

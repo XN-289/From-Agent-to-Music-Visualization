@@ -1,0 +1,79 @@
+{
+  "baselineCommit": "2978b22a2505b9c8d5cc0c797c147fabfc2720d7",
+  "baselineFiles": [
+    { "file": "prompt.md", "title": "" },
+    { "file": "domain/scenarios.md", "title": "领域知识 · 场景库（新手需求 → 专业方向）" },
+    { "file": "domain/lyric-writing.md", "title": "领域知识 · 专属写词 Skill（去 AI 味歌词规范，强制）" },
+    { "file": "domain/style-tags.md", "title": "领域知识 · 风格标签库与曲风百科" },
+    { "file": "domain/song-structure.md", "title": "领域知识 · 歌曲结构规范" },
+    { "file": "domain/chinese-style.md", "title": "领域知识 · 国风（五声调式/传统乐器/措辞规范）" },
+    { "file": "domain/arrangement-vocal.md", "title": "领域知识 · 编曲与唱腔" },
+    { "file": "domain/pronunciation-quirks.md", "title": "领域知识 · 发音怪癖清单" },
+    { "file": "domain/quality-gates.md", "title": "领域知识 · 质量门禁" },
+    { "file": "workflow.md", "title": "工作流与工具路由" }
+  ],
+  "stageOrder": ["discovery", "lyric", "generation", "iteration"],
+  "stages": {
+    "discovery": {
+      "label": "需求挖掘",
+      "files": [
+        { "file": "stages/core.md", "title": "" },
+        { "file": "stages/discovery.md", "title": "阶段职责 · 需求挖掘" },
+        { "file": "domain/scenarios.md", "title": "领域知识 · 场景库" }
+      ],
+      "qualityRegression": {
+        "case": "模糊请求必须先给 2-3 个方向选项，且不得越过确认门禁",
+        "mustContain": ["需求未确认不得生成", "2-3 个", "方向选项", "只问一个问题"],
+        "mustNotContain": ["去「AI 味」歌词规范", "曲风百科"]
+      }
+    },
+    "lyric": {
+      "label": "写词",
+      "files": [
+        { "file": "stages/core.md", "title": "" },
+        { "file": "stages/lyric.md", "title": "阶段职责 · 写词" },
+        { "file": "domain/lyric-writing.md", "title": "领域知识 · 写词规范" },
+        { "file": "domain/song-structure.md", "title": "领域知识 · 歌曲结构" },
+        { "file": "domain/chinese-style.md", "title": "领域知识 · 国风" },
+        { "file": "domain/pronunciation-quirks.md", "title": "领域知识 · 发音怪癖" },
+        { "file": "domain/quality-gates.md", "title": "领域知识 · 质量门禁" }
+      ],
+      "qualityRegression": {
+        "case": "写词阶段必须保留具体画面、结构、双胞胎测试与日文逐行翻译规则",
+        "mustContain": ["画面感四级测试", "[Verse 1]", "双胞胎测试", "每行歌词下方紧跟一行中文翻译"],
+        "mustNotContain": ["曲风百科"]
+      }
+    },
+    "generation": {
+      "label": "生成",
+      "files": [
+        { "file": "stages/core.md", "title": "" },
+        { "file": "stages/generation.md", "title": "阶段职责 · 生成" },
+        { "file": "domain/lyric-generation-checklist.md", "title": "领域知识 · 生成前歌词检查" },
+        { "file": "domain/style-tags.md", "title": "领域知识 · 风格标签库" },
+        { "file": "domain/arrangement-vocal.md", "title": "领域知识 · 编曲与唱腔" },
+        { "file": "domain/quality-gates.md", "title": "领域知识 · 质量门禁" }
+      ],
+      "qualityRegression": {
+        "case": "生成阶段必须保留标签数量、结构标记、时长模型、日文语言硬指令与一次调用纪律",
+        "mustContain": ["2-6 个", "[Intro]", "V5_5", "japanese lyrics", "不要重复调用"],
+        "mustNotContain": ["画面感四级测试"]
+      }
+    },
+    "iteration": {
+      "label": "迭代",
+      "files": [
+        { "file": "stages/core.md", "title": "" },
+        { "file": "stages/iteration.md", "title": "阶段职责 · 迭代" },
+        { "file": "domain/style-tags.md", "title": "领域知识 · 风格标签库" },
+        { "file": "domain/arrangement-vocal.md", "title": "领域知识 · 编曲与唱腔" },
+        { "file": "domain/quality-gates.md", "title": "领域知识 · 质量门禁" }
+      ],
+      "qualityRegression": {
+        "case": "模糊试听反馈必须先定位，一次迭代只允许一次付费调用",
+        "mustContain": ["inspect_song", "只问一个定位问题", "一次迭代只生成一次"],
+        "mustNotContain": ["画面感四级测试"]
+      }
+    }
+  }
+}

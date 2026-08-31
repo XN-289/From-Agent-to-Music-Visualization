@@ -5,11 +5,13 @@ const { createStageApi } = require('../../electron/stageApi.cjs');
 const DEFAULT_PORT = 32107;
 
 function parseArgs(argv) {
-  const args = { port: DEFAULT_PORT, syncEnv: false, smoke: false };
+  const args = { port: DEFAULT_PORT, token: '', syncEnv: false, smoke: false };
   for (let i = 0; i < argv.length; i += 1) {
     const value = argv[i];
     if (value === '--port' && argv[i + 1]) {
       args.port = Number(argv[++i]);
+    } else if (value === '--token' && argv[i + 1]) {
+      args.token = String(argv[++i]);
     } else if (value === '--sync-env') {
       args.syncEnv = true;
     } else if (value === '--smoke') {
@@ -63,9 +65,12 @@ function updateFoliaWebEnvToken(foliaRoot, token) {
   fs.writeFileSync(envPath, next, 'utf8');
 }
 
-function createMemoryStore(port) {
+function createMemoryStore(port, token) {
   const values = new Map();
   values.set('STAGE_API_PORT', port);
+  if (token) {
+    values.set('STAGE_API_TOKEN', token);
+  }
   return {
     get: (key) => values.get(key),
     set: (key, value) => values.set(key, value),
@@ -121,7 +126,7 @@ async function main() {
         return process.cwd();
       },
     },
-    store: createMemoryStore(args.port),
+    store: createMemoryStore(args.port, args.token),
     getMainWindow: () => null,
     stageModeEnabledSettingKey: 'STAGE_MODE_ENABLED',
     stageModeSourceSettingKey: 'STAGE_MODE_SOURCE',

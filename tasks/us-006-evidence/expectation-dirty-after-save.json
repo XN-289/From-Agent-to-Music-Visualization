@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-08-31T08:08:52.104Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "documentClientWidth": 1440,
+  "documentScrollWidth": 1440,
+  "expectationText": "夏夜霓虹高能量 · 自然色 · 强副歌未保存预设：Livehouse 现场 → 夏夜霓虹能量 -12色温 -8高潮氛围 -16",
+  "iframeSrc": "http://127.0.0.1:3004?obs=1&obsSource=now-playing&obsTheme=static&visualizer=fume&cfg=folia-theme%3A%2F%2FeyJ0Ijp7ImwiOnsibiI6Ik11c2ljIEFnZW50IC8gTmVvbiBOaWdodCIsImJnIjoiIzEzMjQ0YSIsInBjIjoiIzJlZTZmZiIsImFjIjoiI2ZmNWZhZSIsInNjIjoiI2QzZTJmZiIsInRmcyI6InNhbnMiLCJhaSI6ImNoYW90aWMifSwiZCI6eyJuIjoiTXVzaWMgQWdlbnQgLyBOZW9uIE5pZ2h0IiwiYmciOiIjMTMyNDRhIiwicGMiOiIjMmVlNmZmIiwiYWMiOiIjZmY1ZmFlIiwic2MiOiIjZDNlMmZmIiwidGZzIjoic2FucyIsImFpIjoiY2hhb3RpYyJ9fSwidm0iOiJmdW1lIiwidmJtIjoiY29tbW9uIiwiYm8iOjAuNzEsInZvIjowLjk0LCJjY2IiOmZhbHNlLCJkdmdiIjpmYWxzZSwiZHZ2IjpmYWxzZX0%3D",
+  "mainClientHeight": 731,
+  "mainScrollHeight": 731,
+  "mainScrollTop": 0,
+  "saveDisabled": false,
+  "saveState": "draft"
+}

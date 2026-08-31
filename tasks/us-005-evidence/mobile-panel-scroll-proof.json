@@ -1,0 +1,37 @@
+{
+  "scrollBefore": {
+    "label": "before",
+    "main": 0,
+    "left": 0,
+    "chat": 114,
+    "right": 0
+  },
+  "scrollAfterLeft": {
+    "label": "after-left",
+    "main": 0,
+    "left": 44,
+    "chat": 114,
+    "right": 0
+  },
+  "scrollAfterChat": {
+    "label": "after-chat",
+    "main": 0,
+    "left": 44,
+    "chat": 234,
+    "right": 0
+  },
+  "scrollAfterRight": {
+    "label": "after-right",
+    "main": 0,
+    "left": 44,
+    "chat": 234,
+    "right": 0
+  },
+  "scrollAfterRightScrollbar": {
+    "label": "after-right-scrollbar",
+    "main": 0,
+    "left": 44,
+    "chat": 234,
+    "right": 300
+  }
+}

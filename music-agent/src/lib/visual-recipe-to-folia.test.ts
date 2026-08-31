@@ -18,6 +18,67 @@ function presetRecipe(id: VisualRecipe["id"]): VisualRecipe {
 }
 
 describe("visual recipe to Folia appearance", () => {
+  it("builds the complete contract config for all three presets", () => {
+    const theme = (
+      name: string,
+      background: string,
+      primary: string,
+      accent: string,
+      secondary: string,
+      animationIntensity: "calm" | "normal" | "chaotic",
+    ) => ({
+      name,
+      backgroundColor: background,
+      primaryColor: primary,
+      accentColor: accent,
+      secondaryColor: secondary,
+      fontStyle: "sans",
+      animationIntensity,
+    });
+
+    expect(buildFoliaVisualConfig(presetRecipe("livehouse"))).toStrictEqual({
+      theme: {
+        light: theme("Music Agent / Livehouse", "#100906", "#f97316", "#ef4444", "#d5b39b", "chaotic"),
+        dark: theme("Music Agent / Livehouse", "#100906", "#f97316", "#ef4444", "#d5b39b", "chaotic"),
+      },
+      visualizerMode: "partita",
+      visualizerBackgroundMode: "latent",
+      backgroundOpacity: 0.77,
+      visualizerOpacity: 0.96,
+      useCoverColorBg: false,
+      disableVisualizerGeometricBackground: true,
+      disableVisualizerVignette: false,
+    });
+
+    expect(buildFoliaVisualConfig(presetRecipe("rain-window"))).toStrictEqual({
+      theme: {
+        light: theme("Music Agent / Rain Window", "#071014", "#67e8f9", "#a5b4fc", "#a8c0cc", "normal"),
+        dark: theme("Music Agent / Rain Window", "#071014", "#67e8f9", "#a5b4fc", "#a8c0cc", "normal"),
+      },
+      visualizerMode: "monet",
+      visualizerBackgroundMode: "monet",
+      backgroundOpacity: 0.59,
+      visualizerOpacity: 0.86,
+      useCoverColorBg: false,
+      disableVisualizerGeometricBackground: true,
+      disableVisualizerVignette: true,
+    });
+
+    expect(buildFoliaVisualConfig(presetRecipe("neon-night"))).toStrictEqual({
+      theme: {
+        light: theme("Music Agent / Neon Night", "#13244a", "#2ee6ff", "#ff5fae", "#d3e2ff", "chaotic"),
+        dark: theme("Music Agent / Neon Night", "#13244a", "#2ee6ff", "#ff5fae", "#d3e2ff", "chaotic"),
+      },
+      visualizerMode: "fume",
+      visualizerBackgroundMode: "common",
+      backgroundOpacity: 0.71,
+      visualizerOpacity: 0.94,
+      useCoverColorBg: false,
+      disableVisualizerGeometricBackground: false,
+      disableVisualizerVignette: false,
+    });
+  });
+
   it("maps each preset to a distinct native Folia mode", () => {
     expect(buildFoliaVisualConfig(presetRecipe("neon-night")).visualizerMode).toBe("fume");
     expect(buildFoliaVisualConfig(presetRecipe("rain-window")).visualizerMode).toBe("monet");

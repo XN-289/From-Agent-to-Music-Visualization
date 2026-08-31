@@ -14,11 +14,57 @@ export interface FoliaStageHealth {
   error?: string;
 }
 
+export interface FoliaStageMediaSession {
+  id: string;
+  title: string;
+  durationMs?: number | null;
+}
+
+export interface FoliaStageSessionResult {
+  mediaSession?: FoliaStageMediaSession | null;
+}
+
 export interface FoliaStagePushResult {
   ok: boolean;
-  stage?: unknown;
+  stage?: FoliaStageSessionResult | null;
   foliaWebUrl: string;
   error?: string;
+}
+
+export interface FoliaStageExportOutput {
+  orientation: 'landscape' | 'portrait';
+  width: number;
+  height: number;
+  fileName: string;
+  filePath: string;
+  sizeBytes: number | null;
+}
+
+export interface FoliaStageExportJob {
+  id: string;
+  songId: string;
+  sessionId: string;
+  title: string;
+  status: 'running' | 'succeeded' | 'failed' | 'cancelled';
+  phase: 'queued' | 'preparing' | 'countdown' | 'recording' | 'finalizing';
+  orientation: 'landscape' | 'portrait' | null;
+  progress: number;
+  elapsed: number;
+  duration: number;
+  outputDirectory: string;
+  outputs: FoliaStageExportOutput[];
+  startedAt: number;
+  updatedAt: number;
+  finishedAt: number | null;
+  error: string | null;
+}
+
+export interface FoliaStageExportResult<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+  status?: number;
+  code?: string;
 }
 
 function stageBaseUrl(): string {
@@ -30,7 +76,7 @@ function stageToken(): string {
 }
 
 export function foliaWebUrl(): string {
-  return process.env.FOLIA_WEB_URL ?? 'http://127.0.0.1:3001';
+  return process.env.FOLIA_WEB_URL ?? 'http://127.0.0.1:3004';
 }
 
 export async function checkFoliaStage(): Promise<FoliaStageHealth> {
@@ -61,6 +107,84 @@ export async function checkFoliaStage(): Promise<FoliaStageHealth> {
 async function toFilePart(filePath: string, mimeType: string, fileName: string): Promise<File> {
   const bytes = await readFile(filePath);
   return new File([new Uint8Array(bytes)], fileName, { type: mimeType });
+}
+
+async function requestFoliaStage<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<FoliaStageExportResult<T>> {
+  const token = stageToken();
+  if (!token) {
+    return {
+      ok: false,
+      error: '未配置 FOLIA_STAGE_TOKEN，请先在 Folia 中开启 Stage Mode',
+      status: 503,
+      code: 'FOLIA_STAGE_TOKEN_MISSING',
+    };
+  }
+
+  try {
+    const res = await fetch(`${stageBaseUrl().replace(/\/$/, '')}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init.headers,
+      },
+    });
+    const payload = (await res.json().catch(() => null)) as unknown;
+    const data = payload as T | null;
+    const errorData = payload as { error?: string; code?: string } | null;
+    if (!res.ok) {
+      return {
+        ok: false,
+        data: data ?? undefined,
+        error: errorData?.error ?? `Stage 返回 HTTP ${res.status}`,
+        status: res.status,
+        code: errorData?.code,
+      };
+    }
+    return { ok: true, data: data ?? undefined };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+      status: 502,
+      code: 'FOLIA_STAGE_UNREACHABLE',
+    };
+  }
+}
+
+export async function startFoliaExport(
+  songId: string,
+  sessionId: string,
+): Promise<FoliaStageExportResult<{ job: FoliaStageExportJob }>> {
+  return requestFoliaStage<{ job: FoliaStageExportJob }>('/stage/export/job', {
+    method: 'POST',
+    body: JSON.stringify({ songId, sessionId }),
+  });
+}
+
+export async function getFoliaExportStatus(): Promise<
+  FoliaStageExportResult<{ job: FoliaStageExportJob | null }>
+> {
+  return requestFoliaStage<{ job: FoliaStageExportJob | null }>('/stage/export/status');
+}
+
+export async function cancelFoliaExport(): Promise<
+  FoliaStageExportResult<{ job: FoliaStageExportJob | null }>
+> {
+  return requestFoliaStage<{ job: FoliaStageExportJob | null }>('/stage/export/cancel', {
+    method: 'POST',
+  });
+}
+
+export async function openFoliaExportFolder(): Promise<
+  FoliaStageExportResult<{ opened: boolean; job: FoliaStageExportJob }>
+> {
+  return requestFoliaStage<{ opened: boolean; job: FoliaStageExportJob }>('/stage/export/open', {
+    method: 'POST',
+  });
 }
 
 export async function pushSongToFolia(bundle: LoadedSongBundle, recipe?: VisualRecipe | null): Promise<FoliaStagePushResult> {
@@ -108,6 +232,9 @@ export async function pushSongToFolia(bundle: LoadedSongBundle, recipe?: VisualR
   form.append('artist', 'Music Agent');
   form.append('album', 'Music Agent');
   form.append('lyricsFormat', 'lrc');
+  if (tLrcText) {
+    form.append('translationLyrics', tLrcText);
+  }
   if (recipe) {
     form.append('visualConfig', JSON.stringify(buildFoliaVisualConfig(recipe)));
   }
@@ -126,10 +253,9 @@ export async function pushSongToFolia(bundle: LoadedSongBundle, recipe?: VisualR
       },
       body: form,
     });
-    const data = (await res.json().catch(() => null)) as {
-      error?: string;
-      activeEntryKind?: string | null;
-    } | null;
+    const data = (await res.json().catch(() => null)) as
+      | (FoliaStageSessionResult & { error?: string; activeEntryKind?: string | null })
+      | null;
     if (!res.ok) {
       return {
         ok: false,

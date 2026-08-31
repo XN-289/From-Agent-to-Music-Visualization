@@ -1,136 +1,98 @@
-# Pipeline: Agent -> Folia
+# Pipeline: Music Agent -> Folia
 
 ## 目标
 
-用户在 Music Agent 内用自然语言描述想要的歌曲，Agent 生成歌词并调用公司音乐代理得到音频；歌曲完成后本地落盘，并推送到 Folia Stage API。Folia 负责播放、全屏歌词可视化和桌面端纯净视频导出。
+用户在 Studio 用自然语言描述歌曲与画面期待；Music Agent 负责需求澄清、写词、生成门禁、媒体落盘与视觉配方保存；Folia Stage 接收音频、主歌词、中文翻译、封面和 session 级视觉配置，负责真实播放、可视化与 Electron 导出。
+
+## 端口与环境
+
+| 服务 | 默认地址 | 配置来源 |
+|---|---|---|
+| Music Agent | `http://127.0.0.1:3003` | dev 命令、`PORT` |
+| Folia web | `http://127.0.0.1:3004` | `FOLIA_WEB_URL` |
+| Folia Stage API | `http://127.0.0.1:32107` | Folia 界面、`FOLIA_STAGE_BASE_URL` |
+
+实际端口以配置和 Folia Stage 设置页为准。Music Agent 的关键变量见 `music-agent/.env.example`。
 
 ## 数据流
 
 ```text
-Music Agent
-  /api/chat
-    -> pi Agent
-    -> generate_music / getJob
-    -> 公司音乐代理 /api/v1/music/song
-    -> /api/v1/music/tasks/{id}
-    -> /api/v1/music/lyrics/timing
-    -> SQLite songs + generation_jobs
-    -> src/lib/song-delivery.ts
-    -> src/lib/media-output.ts
-       data/media/<songId>/audio-*.mp3
+Studio / Chat
+  -> pi Agent 阶段化 harness
+  -> generate_music / getJob
+  -> musicproxy / mock Provider
+  -> SQLite songs + generation_jobs
+  -> media-output
+       data/media/<songId>/audio-*
        data/media/<songId>/lyrics.lrc
-       data/media/<songId>/lyrics.txt
+       data/media/<songId>/lyrics.t.lrc
+       data/media/<songId>/cover.*
        data/media/<songId>/meta.json
-    -> src/lib/folia-stage.ts
-       POST http://127.0.0.1:<stage-port>/stage/session
-
-Folia Stage API
-    -> mediaSession
-    -> player / visualizer
+  -> song-delivery
+  -> folia-stage multipart POST /stage/session
+  -> Folia mediaSession + session visualConfig
 ```
 
-## Folia Stage 合同
+Stage 不可用时，生成事务仍会完成，交付状态持久化为 `needs_retry`；Stage 恢复后可通过 `POST /api/songs/[id]/push-folia` 重推。
 
-来源：`folia-major/test/manual/stage-client/API_SCHEMA.md` 与 `src/utils/stageClientDemo.ts`。
+## 歌词与翻译
 
-- `GET /stage/health`：无鉴权，返回服务状态。
-- `POST /stage/session`：写入媒体会话；支持 JSON 和 multipart。
-  - multipart 字段：`title`、`artist`、`album`、`audioUrl` 或 `audioFile`，`lyricsText` 或 `lyricsFile`，`lyricsFormat`。
-  - `audioFile` 与 `audioUrl` 二选一；`lyricsText` 与 `lyricsFile` 二选一。
-  - 当前 `lyricsFormat` 支持 `lrc`、`enhanced-lrc`、`vtt`、`yrc`。
-- `POST /stage/lyrics`：写入独立歌词对象；会把当前 Stage 输入切到 `activeEntryKind: "lyrics"` 并清空 `mediaSession`。
+1. 写词阶段为日文或非中文主语言生成逐行 `//` 中文翻译。
+2. 提交给音乐 Provider 前，`stripTranslationLines` 剥离翻译，避免翻译被演唱。
+3. 落盘时主歌词生成 `lyrics.lrc`，翻译按主歌词行序生成 `lyrics.t.lrc`。
+4. 真实 MP3 推送前写入双 USLT：原文与翻译各一帧。
+5. Stage push 显式携带 `translationLyrics`；未显式提供时，Folia 可从上传 MP3 的内嵌 USLT 回填。显式字段优先，内嵌元数据是回退。
 
-Music Agent 当前使用：
+这个结论已替代 2026-08-21 的旧判断。当前 media session 支持 `translationLyrics`，不再需要用 `POST /stage/lyrics` 附加翻译；后者会清空 media session，不能作为同一首歌的翻译补充通道。
+
+## Stage multipart 合同
+
+完整契约见 [folia-major/test/manual/stage-client/API_SCHEMA.md](../folia-major/test/manual/stage-client/API_SCHEMA.md)。Music Agent 当前提交：
+
+```text
+title
+artist
+audioFile
+lyricsFormat=lrc
+lyricsFile
+translationLyrics
+coverFile
+visualConfig
+```
+
+`visualConfig` 由已保存的 `visualRecipe` 转换而来。Folia 将它作为当前 session 的外观覆盖；session 结束、清空或切到无配方歌曲时恢复本地外观，不写全局偏好。
+
+## 视觉配方
+
+R0 的 `VisualRecipe` 是四字段结构：
 
 ```ts
-form.append('lyricsFormat', 'lrc');
-form.append('audioFile', mp3File);
-form.append('lyricsFile', lrcFile);
+type VisualRecipe = {
+  id: "neon-night" | "rain-window" | "livehouse";
+  intensity: number;      // 0-100
+  temperature: number;    // -20..20
+  chorusImpact: number;   // 0-100
+};
 ```
 
-这个组合满足 Stage media session 的合同，不会触发 `INVALID_AUDIO_SOURCE` 或 `INVALID_LYRICS_SOURCE`。
+Studio 的视觉期待卡展示预设、色卡、语义特征和与已保存值的差异。点击保存后，Music Agent 只在推送时把已保存配方转换为 Stage `visualConfig`；构图预览只用于构图草稿，不代表最终音频反应。
 
-## 歌词格式
+## 导出
 
-Music Agent 内 `LyricsLine` 是：
+Folia 保留 Electron 主窗口采集与 `MediaRecorder` 导出能力，控件在遥控窗口。当前手册说明的是两次手动导出；US-004 的“一个任务串行产出横竖屏、统一进度与校验”尚未验收。
 
-```ts
-{ startMs: number; endMs: number; text: string }
+## 验证
+
+```powershell
+Push-Location music-agent
+pnpm test
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm build
+Pop-Location
+
+Push-Location folia-major
+npm run typecheck
+npm test
+Pop-Location
 ```
-
-`lyricsToLrc()` 将其转成标准 `.lrc`：
-
-```text
-[mm:ss.cc]text
-```
-
-真实公司音乐代理可通过 `/api/v1/music/lyrics/timing` 返回行级时间轴；缺失时调用层按总时长均分生成占位时间轴。
-
-## 一键导入
-
-Music Agent 路由：
-
-```text
-POST /api/songs/[id]/push-folia
-```
-
-该路由调用 `deliverSong(id, { pushToFolia: true })`：
-
-1. `ensureLocalSong()`：确认歌曲完成并从 SQLite 生成/恢复本地音频和 LRC；
-2. `checkFoliaStage()`：检查 Stage 是否启用且来源为 `stage-api`；
-3. `pushSongToFolia()`：用 `FormData` 上传音频和 LRC。
-
-前端详情页对应入口在：
-
-```text
-music-agent/src/components/song/song-detail-client.tsx
-```
-
-## 环境变量
-
-### Music Agent
-
-```env
-LLM_PROVIDER=deepseek
-LLM_MODEL=deepseek-v4-flash
-DEEPSEEK_API_KEY=
-
-SUNO_PROVIDER=musicproxy
-MUSIC_PROXY_BASE_URL=http://127.0.0.1:8800
-MUSIC_PROXY_API_KEY=
-MUSIC_PROXY_DEFAULT_PROVIDER=suno_openaihk
-MUSIC_PROXY_MODEL=auto
-
-FOLIA_STAGE_BASE_URL=http://127.0.0.1:32107
-FOLIA_STAGE_TOKEN=
-FOLIA_WEB_URL=http://127.0.0.1:3001
-```
-
-### Folia
-
-```env
-VITE_NETEASE_API_BASE=http://localhost:3000
-VITE_AI_PROVIDER=google
-GEMINI_API_KEY=
-```
-
-Stage 的 token 不是写死在 `.env.example` 里的；它来自 Folia 桌面端设置页面。每次重新生成 token 后都要同步 Music Agent 的 `FOLIA_STAGE_TOKEN`。
-
-## 视频导出
-
-Folia 已有 Electron 桌面端录制/导出实现：
-
-```text
-folia-major/src/hooks/useElectronVideoExportController.ts
-folia-major/src/services/electronVideoExport.ts
-```
-
-推荐继续用 Folia 内置能力做纯净视频，不把浏览器截图录制作为主路径，避免录进 Music Agent 的聊天 UI、提示条和浏览器边框。
-
-## 已知边界
-
-- `POST /stage/session` 只接受一个独立歌词文件；翻译 sidecar 不会随当前 media-session push 直接进入 Folia。
-- `POST /stage/lyrics` 会清空 media session，因此不能简单地作为“附加翻译”使用。
-- 生成路径当前只写 `lyrics.lrc`，不自动产出 `lyrics.t.lrc`。
-
-推荐下一步：在推送前把带时间轴的翻译嵌入 MP3 metadata，让 Folia 从 `audioFile` 中解析 `translation`-tagged lyrics；或者扩展本地导入/Stage 方案前先验证 `/stage/lyrics` 与 media session 的并存关系。

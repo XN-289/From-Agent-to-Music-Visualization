@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-08-31T08:05:30.452Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "documentClientWidth": 1440,
+  "documentScrollWidth": 1440,
+  "expectationText": "Livehouse 现场高能量 · 暖色 · 强副歌未保存预设：默认画面 → Livehouse 现场",
+  "iframeSrc": "http://127.0.0.1:3004?obs=1&obsSource=now-playing&obsTheme=static&visualizer=partita&cfg=folia-theme%3A%2F%2FeyJ0Ijp7ImwiOnsibiI6Ik11c2ljIEFnZW50IC8gTGl2ZWhvdXNlIiwiYmciOiIjMTAwOTA2IiwicGMiOiIjZjk3MzE2IiwiYWMiOiIjZWY0NDQ0Iiwic2MiOiIjZDViMzliIiwidGZzIjoic2FucyIsImFpIjoiY2hhb3RpYyJ9LCJkIjp7Im4iOiJNdXNpYyBBZ2VudCAvIExpdmVob3VzZSIsImJnIjoiIzEwMDkwNiIsInBjIjoiI2Y5NzMxNiIsImFjIjoiI2VmNDQ0NCIsInNjIjoiI2Q1YjM5YiIsInRmcyI6InNhbnMiLCJhaSI6ImNoYW90aWMifX0sInZtIjoicGFydGl0YSIsInZibSI6ImxhdGVudCIsImJvIjowLjc3LCJ2byI6MC45NiwiY2NiIjpmYWxzZSwiZHZnYiI6dHJ1ZSwiZHZ2IjpmYWxzZX0%3D",
+  "mainClientHeight": 731,
+  "mainScrollHeight": 731,
+  "mainScrollTop": 0,
+  "saveDisabled": false,
+  "saveState": "draft"
+}

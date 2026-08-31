@@ -5,7 +5,7 @@ import type { VideoExportPreset } from '../types/videoExport';
 // Low-level Electron/Chromium recording helpers used by the player export hook.
 const EXPORT_FRAME_RATE = 60;
 const EXPORT_AUDIO_BITS_PER_SECOND = 320_000;
-const VIDEO_EXPORT_FILE_EXTENSIONS = ['mp4', 'webm'] as const;
+const VIDEO_EXPORT_FILE_EXTENSIONS = ['mp4'] as const;
 
 export type VideoExportFileExtension = typeof VIDEO_EXPORT_FILE_EXTENSIONS[number];
 
@@ -56,21 +56,6 @@ export const getSupportedVideoExportFormat = (): VideoExportFormat | null => {
             mimeType: 'video/mp4',
             extension: 'mp4',
             displayName: 'MP4 Video',
-        },
-        {
-            mimeType: 'video/webm;codecs=vp8,opus',
-            extension: 'webm',
-            displayName: 'WebM Video',
-        },
-        {
-            mimeType: 'video/webm;codecs=vp9,opus',
-            extension: 'webm',
-            displayName: 'WebM Video',
-        },
-        {
-            mimeType: 'video/webm',
-            extension: 'webm',
-            displayName: 'WebM Video',
         },
     ];
 

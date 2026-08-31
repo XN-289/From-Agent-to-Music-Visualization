@@ -814,17 +814,17 @@ R1 T1 记录必须额外包含：
 | 用户故事 | 结论 | 证据位置 |
 |---|---|---|
 | US-001 对话生成中文歌 | 通过 | `tasks/us-001-acceptance.md` |
-| US-002 日文翻译副字幕 | 未验收 | 待补 |
-| US-003 Stage 推送与兜底 | 未验收 | 待补 |
+| US-002 日文翻译副字幕 | 通过 | `tasks/us-002-acceptance.md` |
+| US-003 Stage 推送与兜底 | 通过 | `tasks/us-003-acceptance.md` |
 | US-004 横竖屏导出 | 未验收 | 待补 |
-| US-005 Studio 工作台 | 未验收 | 待补 |
-| US-006 配方保存 | 未验收 | 待补 |
-| US-007 配方驱动舞台 | 未验收 | 待补 |
-| US-008 三配方定稿 | 未验收 | 待补 |
+| US-005 Studio 工作台 | 通过 | `tasks/us-005-acceptance.md` |
+| US-006 配方保存 | 通过 | `tasks/us-006-acceptance.md` |
+| US-007 配方驱动舞台 | 通过 | `tasks/us-007-acceptance.md` |
+| US-008 三配方定稿 | 通过 | `tasks/us-008-acceptance.md` |
 | US-009 独立全流程 | 未验收 | 待补 |
-| US-010 Mock 时间轴 | 未验收 | 待补 |
-| US-011 Prompt 分阶段加载 | 未验收 | 待补 |
-| US-012 文档对齐 | 未验收 | 待补 |
+| US-010 Mock 时间轴 | 通过 | `tasks/us-010-acceptance.md` |
+| US-011 Prompt 分阶段加载 | 通过 | `tasks/us-011-acceptance.md` |
+| US-012 文档对齐 | 通过 | `tasks/us-012-acceptance.md` |
 | US-013 AI 受约束配方 | 未验收 | 待补 |
 | US-014 Studio AI 预览确认 | 未验收 | 待补 |
 | US-015 积木式组合 | 未验收 | 待补 |
@@ -833,7 +833,6 @@ R1 T1 记录必须额外包含：
 
 | 编号 | 问题 | 默认处理 |
 |---|---|---|
-| OQ-1 | `neon-night` 是否继续提亮 | US-008 用户拍板 |
 | OQ-2 | 整曲导出是否增加 30s/60s 预设 | 本期整曲导出，片段属未来 |
 | OQ-3 | R1 真实试听是否默认打开 Folia Electron 窗口 | 是；构图预览不能替代真实试听 |
 | OQ-4 | 导出 H.264 不支持时失败还是自动转码 | 默认任务失败并提示；自动转码需另行批准 |

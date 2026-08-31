@@ -1,0 +1,255 @@
+{
+  "generatedAt": "2026-08-31T09:54:40.111Z",
+  "songId": "432cd78d-2026-4733-8da8-cd9d3e6bae66",
+  "songTitle": "神降・天火",
+  "order": [
+    "livehouse",
+    "rain-window",
+    "neon-night"
+  ],
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "deviceScaleFactor": 1,
+    "colorScheme": "dark"
+  },
+  "segmentStartMs": 53218,
+  "segmentEndMs": 61218,
+  "systemBrightness": "not changed by this script",
+  "results": [
+    {
+      "order": 1,
+      "recipe": {
+        "id": "livehouse",
+        "intensity": 84,
+        "temperature": 12,
+        "chorusImpact": 92
+      },
+      "expectation": {
+        "name": "Livehouse 现场",
+        "cue": "舞台灯、颗粒感、人群能量"
+      },
+      "stageSessionId": "stage-1788170040023-ba85c16a-e96e-4e62-9b26-e0ef1b0bcae9",
+      "stageUpdatedAt": 1788170040085,
+      "visualConfig": {
+        "theme": {
+          "light": {
+            "name": "Music Agent / Livehouse",
+            "backgroundColor": "#100906",
+            "primaryColor": "#f97316",
+            "accentColor": "#ef4444",
+            "secondaryColor": "#d5b39b",
+            "fontStyle": "sans",
+            "animationIntensity": "chaotic"
+          },
+          "dark": {
+            "name": "Music Agent / Livehouse",
+            "backgroundColor": "#100906",
+            "primaryColor": "#f97316",
+            "accentColor": "#ef4444",
+            "secondaryColor": "#d5b39b",
+            "fontStyle": "sans",
+            "animationIntensity": "chaotic"
+          }
+        },
+        "visualizerMode": "partita",
+        "visualizerBackgroundMode": "latent",
+        "backgroundOpacity": 0.77,
+        "visualizerOpacity": 0.96,
+        "useCoverColorBg": false,
+        "disableVisualizerGeometricBackground": true,
+        "disableVisualizerVignette": false
+      },
+      "playback": {
+        "segmentStartMs": 53218,
+        "segmentEndMs": 61218,
+        "beforePlay": {
+          "currentTime": 54.086365,
+          "paused": false,
+          "readyState": 3
+        },
+        "afterScreenshots": {
+          "primary": "#f97316",
+          "stageAudioMs": 61348,
+          "paused": false
+        }
+      },
+      "screenshots": [
+        {
+          "targetMs": 54200,
+          "actualAudioMs": 54919,
+          "file": "livehouse-054200ms.png",
+          "sha256": "258CF8FBAB29179535E6C3BC77C38C9ADD25E6209F72F25D39B0EC4E856BC193"
+        },
+        {
+          "targetMs": 56200,
+          "actualAudioMs": 57727,
+          "file": "livehouse-056200ms.png",
+          "sha256": "945C0D0BFF35096DDDAB623506C86C7134D10A600B5CCEFF70A4FE99BE6D768D"
+        },
+        {
+          "targetMs": 58200,
+          "actualAudioMs": 59669,
+          "file": "livehouse-058200ms.png",
+          "sha256": "EE10EC276718A1A40FA0F51204D0ACAAF1A1F2D31AE801C8E501AB6146D29791"
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "recipe": {
+        "id": "rain-window",
+        "intensity": 38,
+        "temperature": -8,
+        "chorusImpact": 44
+      },
+      "expectation": {
+        "name": "雨窗民谣",
+        "cue": "低饱和、柔光、雨夜玻璃"
+      },
+      "stageSessionId": "stage-1788170055135-9b2d03fe-6140-4c69-be5f-c811525fa7bc",
+      "stageUpdatedAt": 1788170055200,
+      "visualConfig": {
+        "theme": {
+          "light": {
+            "name": "Music Agent / Rain Window",
+            "backgroundColor": "#071014",
+            "primaryColor": "#67e8f9",
+            "accentColor": "#a5b4fc",
+            "secondaryColor": "#a8c0cc",
+            "fontStyle": "sans",
+            "animationIntensity": "normal"
+          },
+          "dark": {
+            "name": "Music Agent / Rain Window",
+            "backgroundColor": "#071014",
+            "primaryColor": "#67e8f9",
+            "accentColor": "#a5b4fc",
+            "secondaryColor": "#a8c0cc",
+            "fontStyle": "sans",
+            "animationIntensity": "normal"
+          }
+        },
+        "visualizerMode": "monet",
+        "visualizerBackgroundMode": "monet",
+        "backgroundOpacity": 0.59,
+        "visualizerOpacity": 0.86,
+        "useCoverColorBg": false,
+        "disableVisualizerGeometricBackground": true,
+        "disableVisualizerVignette": true
+      },
+      "playback": {
+        "segmentStartMs": 53218,
+        "segmentEndMs": 61218,
+        "beforePlay": {
+          "currentTime": 53.293006,
+          "paused": false,
+          "readyState": 3
+        },
+        "afterScreenshots": {
+          "primary": "#67e8f9",
+          "stageAudioMs": 58507,
+          "paused": false
+        }
+      },
+      "screenshots": [
+        {
+          "targetMs": 54200,
+          "actualAudioMs": 54209,
+          "file": "rain-window-054200ms.png",
+          "sha256": "A365BED18499AF879A969FC311066AEEA2C364AEBEDC476E1C14584ED71A523B"
+        },
+        {
+          "targetMs": 56200,
+          "actualAudioMs": 56217,
+          "file": "rain-window-056200ms.png",
+          "sha256": "B791163DB3D4A887B4E3F853BAF1121E840EACBC4924522AE378D0CC218D9EF9"
+        },
+        {
+          "targetMs": 58200,
+          "actualAudioMs": 58238,
+          "file": "rain-window-058200ms.png",
+          "sha256": "C625597017A96CFE1B43B510FEA3A04448919A5273B2D80D7743F142EE459F0C"
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "recipe": {
+        "id": "neon-night",
+        "intensity": 72,
+        "temperature": 4,
+        "chorusImpact": 76
+      },
+      "expectation": {
+        "name": "夏夜霓虹",
+        "cue": "霓虹、潮湿路面、副歌炸开"
+      },
+      "stageSessionId": "stage-1788170067049-daf7af01-d701-4f5c-bed1-329b01c69cf9",
+      "stageUpdatedAt": 1788170067093,
+      "visualConfig": {
+        "theme": {
+          "light": {
+            "name": "Music Agent / Neon Night",
+            "backgroundColor": "#13244a",
+            "primaryColor": "#2ee6ff",
+            "accentColor": "#ff5fae",
+            "secondaryColor": "#d3e2ff",
+            "fontStyle": "sans",
+            "animationIntensity": "chaotic"
+          },
+          "dark": {
+            "name": "Music Agent / Neon Night",
+            "backgroundColor": "#13244a",
+            "primaryColor": "#2ee6ff",
+            "accentColor": "#ff5fae",
+            "secondaryColor": "#d3e2ff",
+            "fontStyle": "sans",
+            "animationIntensity": "chaotic"
+          }
+        },
+        "visualizerMode": "fume",
+        "visualizerBackgroundMode": "common",
+        "backgroundOpacity": 0.71,
+        "visualizerOpacity": 0.94,
+        "useCoverColorBg": false,
+        "disableVisualizerGeometricBackground": false,
+        "disableVisualizerVignette": false
+      },
+      "playback": {
+        "segmentStartMs": 53218,
+        "segmentEndMs": 61218,
+        "beforePlay": {
+          "currentTime": 53.350681,
+          "paused": false,
+          "readyState": 3
+        },
+        "afterScreenshots": {
+          "primary": "#2ee6ff",
+          "stageAudioMs": 58458,
+          "paused": false
+        }
+      },
+      "screenshots": [
+        {
+          "targetMs": 54200,
+          "actualAudioMs": 54229,
+          "file": "neon-night-054200ms.png",
+          "sha256": "6A9E5666C32FC053669E11666E79196467A31B9CDE99C650272B7175C69C2C8A"
+        },
+        {
+          "targetMs": 56200,
+          "actualAudioMs": 56229,
+          "file": "neon-night-056200ms.png",
+          "sha256": "8032D741A057BC2919337491CE894C1D770F0413A0DFCF21CD2D8DD436B26747"
+        },
+        {
+          "targetMs": 58200,
+          "actualAudioMs": 58237,
+          "file": "neon-night-058200ms.png",
+          "sha256": "92E8FEA651D49B3FF8E1757073783A4C7FBDEB5E9D7083B0C9649DA822AA2F4B"
+        }
+      ]
+    }
+  ]
+}

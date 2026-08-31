@@ -97,6 +97,7 @@ describe('stageClientDemo helpers', () => {
             artist: 'Artist',
             audioUrl: 'https://example.com/demo.mp3',
             lyricsText: '[00:00.00]Hello',
+            translationLyrics: '[00:00.00]你好',
             lyricsFormat: 'lrc',
         });
 
@@ -107,6 +108,7 @@ describe('stageClientDemo helpers', () => {
             artist: 'Artist',
             audioUrl: 'https://example.com/demo.mp3',
             lyricsText: '[00:00.00]Hello',
+            translationLyrics: '[00:00.00]你好',
             lyricsFormat: 'lrc',
         });
     });

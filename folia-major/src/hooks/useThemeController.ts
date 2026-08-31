@@ -192,6 +192,28 @@ export function useThemeController({
         currentSongHasLocalAiTheme,
     }), [aiTheme, bgMode, customTheme, daylightTheme, defaultTheme, isDaylight, legacyTheme, currentSongHasLocalAiTheme]);
 
+    // Stage overrides mutate only the displayed theme; this pair keeps the local preference restorable
+    // after daylight switches while a recipe is active.
+    const stageLocalThemes = useMemo<DualTheme>(() => {
+        if (bgMode === 'custom' && customTheme) {
+            return customTheme;
+        }
+
+        if (bgMode === 'ai') {
+            if (aiTheme) {
+                return aiTheme;
+            }
+            if (legacyTheme) {
+                return { light: legacyTheme, dark: legacyTheme };
+            }
+        }
+
+        return {
+            light: applyStoredAnimationIntensityToTheme(daylightTheme),
+            dark: applyStoredAnimationIntensityToTheme(defaultTheme),
+        };
+    }, [aiTheme, bgMode, customTheme, daylightTheme, defaultTheme, legacyTheme]);
+
     // The three switches are mutually constrained by the resolvers, so they are only ever written
     // together through applyPreferenceSwitchState -- which lets a ref mirror them exactly. Reading the
     // render-scoped state instead would make two resolver calls in one handler (config import applies
@@ -229,10 +251,6 @@ export function useThemeController({
     useEffect(() => {
         localStorage.setItem(CUSTOM_THEME_PREFERRED_KEY, String(isCustomThemePreferred && !!customTheme));
     }, [customTheme, isCustomThemePreferred]);
-
-    useEffect(() => {
-        saveStoredAnimationIntensity(theme.animationIntensity);
-    }, [theme.animationIntensity]);
 
     useEffect(() => {
         saveStoredThemeAutoSwitchEnabled(songThemeAutoSwitchEnabled);
@@ -697,6 +715,11 @@ export function useThemeController({
             }
             setTheme(applyStoredAnimationIntensityToTheme(nextTheme));
         },
+        // Stage recipes override the active session only; they must not mutate animation preferences.
+        setStageTheme: (nextTheme: Theme) => {
+            setTheme(nextTheme);
+        },
+        stageLocalThemes,
         aiTheme,
         setAiTheme,
         customTheme,

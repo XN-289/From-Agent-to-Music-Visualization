@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-08-31T08:16:00.000Z",
+  "files": [
+    {
+      "name": "expectation-draft-1440x900.jpg",
+      "bytes": 34343,
+      "height": 900,
+      "width": 1440,
+      "sha256": "9cf4933a4efc83545ef208ae711cc839c482e56a5bab94d38aeb036cb83dedaa"
+    },
+    {
+      "name": "expectation-save-failed-1440x900.jpg",
+      "bytes": 34655,
+      "height": 900,
+      "width": 1440,
+      "sha256": "4b9a09dad29ccc36b34b613700eeea0caa664949d200252fb9cce7b0b5ae6201"
+    },
+    {
+      "name": "expectation-save-success-1440x900.jpg",
+      "bytes": 34263,
+      "height": 900,
+      "width": 1440,
+      "sha256": "564ed6e945d4a40356909e5aeaf2547a24df2bb43bb134bb6b995f015153fddd"
+    },
+    {
+      "name": "expectation-dirty-after-save-1440x900.jpg",
+      "bytes": 33655,
+      "height": 900,
+      "width": 1440,
+      "sha256": "f7489eee80a991a7da49b6eef2c03743d78439ef5e2abd2c19bb31b309261bdd"
+    },
+    {
+      "name": "expectation-restored-1440x900.jpg",
+      "bytes": 36413,
+      "height": 900,
+      "width": 1440,
+      "sha256": "bdf8729a031449c70fd5df99b53f38ada10f3f124568986524eb264ae8c3e9fd"
+    }
+  ]
+}

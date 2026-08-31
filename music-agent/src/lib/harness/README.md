@@ -1,6 +1,6 @@
 # Harness 分层说明
 
-本目录是产品内「音乐制作人脑子」的实验场：`prompt.ts` 在运行时读取这里的 Markdown 组装系统提示词。
+本目录是产品内「音乐制作人脑子」的实验场：`prompt.ts` 依据 `prompt-stages.json` 在需求挖掘、写词、生成、迭代四阶段读取对应 Markdown 组装系统提示词；`pnpm prompt:stats` 输出 baseline commit 与各阶段 token/rubric 数据。
 
 `D:\music-customization-skill\` 是从本目录蒸馏出的开源社区 skill「音乐定制」（2026-08-19 打包，待建独立 GitHub 仓库发布）。
 

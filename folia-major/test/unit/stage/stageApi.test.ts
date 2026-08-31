@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import net from 'node:net';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 import { createStageApi } from '../../../electron/stageApi.cjs';
@@ -48,6 +48,8 @@ const withStageApi = async (options: {
     onPlayRequest?: (payload: any) => void;
     onControlRequest?: (payload: any) => void;
     onQueueRequest?: (payload: any) => void;
+    onExportCommand?: (payload: any) => void;
+    openExportDirectory?: (directory: string) => Promise<string> | string;
 } = {}) => {
     const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'folia-stage-api-'));
     const port = await getFreePort();
@@ -78,6 +80,9 @@ const withStageApi = async (options: {
                     }
                     if (channel === 'stage-player-queue-request') {
                         options.onQueueRequest?.(payload);
+                    }
+                    if (channel === 'remote-control-command') {
+                        options.onExportCommand?.(payload);
                     }
                     if (options.autoCompletePlay && channel === 'stage-external-play-request') {
                         queueMicrotask(() => {
@@ -113,6 +118,7 @@ const withStageApi = async (options: {
         defaultStageApiPort: port,
         getNeteasePort: () => 39999,
         searchStageSongs: options.searchStageSongs,
+        openExportDirectory: options.openExportDirectory as any,
     });
 
     await stageApi.setStageEnabled(true);
@@ -188,6 +194,50 @@ const buildStageQueueItems = (count: number) => Array.from({ length: count }, (_
     durationMs: 180000 + index,
     coverUrl: null,
 }));
+
+const uploadStageAudioSession = async (context: Awaited<ReturnType<typeof withStageApi>>) => {
+    const audio = await readFile(path.resolve('test/manual/stage-client/fixtures/stage-demo-tone.wav'));
+    const formData = new FormData();
+    formData.append('title', 'Export Song');
+    formData.append('artist', 'Folia');
+    formData.append('lyricsText', '[00:00.00]Hello');
+    formData.append('audioFile', new Blob([new Uint8Array(audio)], { type: 'audio/wav' }), 'export-tone.wav');
+
+    const response = await fetch(`${context.baseUrl}/stage/session`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${context.token}` },
+        body: formData,
+    });
+    await expect(response.status).toBe(200);
+    return (await response.json()).mediaSession;
+};
+
+const publishStageSessionReadySnapshot = (
+    stageApi: ReturnType<typeof createStageApi>,
+    session: Record<string, any>,
+) => stageApi.publishStagePlayerSnapshot({
+    playbackContext: 'stage-session',
+    current: {
+        id: String(-Math.floor(session.updatedAt)),
+        source: 'stage-session',
+        title: session.title,
+        artist: session.artist,
+        album: session.album,
+        durationMs: session.durationMs,
+        coverUrl: session.coverUrl,
+    },
+    playerState: 'PAUSED',
+    positionMs: 0,
+    durationMs: session.durationMs,
+    sampledAtMs: Date.now(),
+    updatedAt: Date.now(),
+});
+
+const updateJob = async (
+    stageApi: ReturnType<typeof createStageApi>,
+    jobId: string,
+    update: Record<string, any>,
+) => stageApi.updateStageExportJob({ jobId, ...update });
 
 const waitForWebSocketMessage = (socket: WebSocket, timeoutMs = 500) => new Promise<any>((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -316,6 +366,7 @@ describe('stageApi http contract', () => {
                 artist: 'Artist',
                 audioUrl: 'https://example.com/demo.mp3',
                 lyricsText: '[00:00.00]Hello',
+                translationLyrics: '[00:00.00]你好',
             }),
         });
 
@@ -330,6 +381,8 @@ describe('stageApi http contract', () => {
             title: 'Example',
             artist: 'Artist',
             audioUrl: 'https://example.com/demo.mp3',
+            lyricsText: '[00:00.00]Hello',
+            translationLyrics: '[00:00.00]你好',
         });
 
         const clearResponse = await fetch(`${context.baseUrl}/stage/state`, {
@@ -342,6 +395,205 @@ describe('stageApi http contract', () => {
         expect(clearPayload.activeEntryKind).toBeNull();
         expect(clearPayload.lyricsSession).toBeNull();
         expect(clearPayload.mediaSession).toBeNull();
+    });
+
+    it('accepts a multipart media session with an explicit translation lyrics field', async () => {
+        const context = await withStageApi();
+        activeCleanups.push(context.cleanup);
+
+        const formData = new FormData();
+        formData.append('title', 'Example');
+        formData.append('artist', 'Artist');
+        formData.append('audioUrl', 'https://example.com/demo.mp3');
+        formData.append('lyricsText', '[00:00.00]Hello');
+        formData.append('translationLyrics', '[00:00.00]你好');
+
+        const response = await fetch(`${context.baseUrl}/stage/session`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${context.token}`,
+            },
+            body: formData,
+        });
+
+        expect(response.status).toBe(200);
+        const payload = await response.json();
+        expect(payload.activeEntryKind).toBe('media');
+        expect(payload.mediaSession).toMatchObject({
+            title: 'Example',
+            artist: 'Artist',
+            audioUrl: 'https://example.com/demo.mp3',
+            lyricsText: '[00:00.00]Hello',
+            translationLyrics: '[00:00.00]你好',
+        });
+    });
+
+    it('rejects Stage export without an active media session', async () => {
+        const context = await withStageApi();
+        activeCleanups.push(context.cleanup);
+
+        const response = await fetch(`${context.baseUrl}/stage/export/job`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${context.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                songId: 'song-1',
+                sessionId: 'stage-1',
+            }),
+        });
+
+        expect(response.status).toBe(409);
+        const payload = await response.json();
+        expect(payload.code).toBe('STAGE_EXPORT_SESSION_UNAVAILABLE');
+    });
+
+    it('starts, locks, and cancels a two-MP4 Stage export job', async () => {
+        const commands: any[] = [];
+        const context = await withStageApi({
+            onExportCommand: command => commands.push(command),
+        });
+        activeCleanups.push(context.cleanup);
+        const session = await uploadStageAudioSession(context);
+
+        const mismatchResponse = await fetch(`${context.baseUrl}/stage/export/job`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${context.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ songId: 'song-1', sessionId: 'different-session' }),
+        });
+        expect(mismatchResponse.status).toBe(409);
+        expect((await mismatchResponse.json()).code).toBe('STAGE_EXPORT_SESSION_MISMATCH');
+
+        const startResponse = await fetch(`${context.baseUrl}/stage/export/job`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${context.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ songId: 'song-1', sessionId: session.id }),
+        });
+        expect(startResponse.status).toBe(202);
+        const startPayload = await startResponse.json();
+        const job = startPayload.job;
+        expect(job.status).toBe('running');
+        expect(job.outputs.map((output: any) => `${output.orientation}:${output.width}x${output.height}`)).toEqual([
+            'landscape:1920x1080',
+            'portrait:1080x1920',
+        ]);
+        expect(job.outputs.every((output: any) => output.filePath.endsWith('.mp4'))).toBe(true);
+        expect(commands).toEqual([]);
+        publishStageSessionReadySnapshot(context.stageApi, session);
+        expect(commands).toEqual([{ type: 'start-batch-export', job }]);
+
+        const secondResponse = await fetch(`${context.baseUrl}/stage/export/job`, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${context.token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ songId: 'song-2', sessionId: session.id }),
+        });
+        expect(secondResponse.status).toBe(409);
+        expect((await secondResponse.json()).code).toBe('STAGE_EXPORT_ALREADY_RUNNING');
+
+        const lockedResponse = await fetch(`${context.baseUrl}/stage/state`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${context.token}` },
+        });
+        expect(lockedResponse.status).toBe(409);
+        expect((await lockedResponse.json()).code).toBe('STAGE_EXPORT_SESSION_LOCKED');
+
+        const cancelResponse = await fetch(`${context.baseUrl}/stage/export/cancel`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${context.token}` },
+        });
+        expect(cancelResponse.status).toBe(200);
+        expect((await cancelResponse.json()).job).toMatchObject({
+            id: job.id,
+            status: 'cancelled',
+            finishedAt: expect.any(Number),
+        });
+        expect(commands[1]).toEqual({ type: 'cancel-batch-export', jobId: job.id });
+    });
+
+    it('accepts export success only when both MP4 files are non-empty', async () => {
+        const context = await withStageApi({
+            openExportDirectory: () => '',
+        });
+        activeCleanups.push(context.cleanup);
+        const session = await uploadStageAudioSession(context);
+
+        const start = async () => {
+            const response = await fetch(`${context.baseUrl}/stage/export/job`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${context.token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ songId: 'song-1', sessionId: session.id }),
+            });
+            expect(response.status).toBe(202);
+            return (await response.json()).job;
+        };
+
+        const missingJob = await start();
+        await writeFile(missingJob.outputs[0].filePath, 'mp4');
+        const missingResult = await context.stageApi.updateStageExportJob({
+            jobId: missingJob.id,
+            status: 'succeeded',
+        });
+        expect(missingResult).toBe(true);
+        const missingStatus = await (await fetch(`${context.baseUrl}/stage/export/status`, {
+            headers: { Authorization: `Bearer ${context.token}` },
+        })).json();
+        expect(missingStatus.job).toMatchObject({
+            id: missingJob.id,
+            status: 'failed',
+        });
+        expect(missingStatus.job.error).toContain(missingJob.outputs[1].fileName);
+
+        const job = await start();
+        await updateJob(context.stageApi, job.id, {
+            status: 'running',
+            phase: 'recording',
+            orientation: 'landscape',
+            progress: 0.25,
+            elapsed: 1,
+        });
+        for (const output of job.outputs) {
+            await writeFile(output.filePath, 'mp4-data');
+        }
+        const successResult = await updateJob(context.stageApi, job.id, {
+            status: 'succeeded',
+            outputs: job.outputs.map((output: any) => ({
+                ...output,
+                sizeBytes: 1,
+            })),
+        });
+        expect(successResult).toBe(true);
+
+        const statusResponse = await fetch(`${context.baseUrl}/stage/export/status`, {
+            headers: { Authorization: `Bearer ${context.token}` },
+        });
+        const status = await statusResponse.json();
+        expect(status.job).toMatchObject({
+            id: job.id,
+            status: 'succeeded',
+            progress: 1,
+            finishedAt: expect.any(Number),
+        });
+        expect(status.job.outputs.map((output: any) => output.sizeBytes)).toEqual([8, 8]);
+
+        const openResponse = await fetch(`${context.baseUrl}/stage/export/open`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${context.token}` },
+        });
+        expect(openResponse.status).toBe(200);
+        expect((await openResponse.json()).opened).toBe(true);
     });
 
     it('returns normalized local search results', async () => {

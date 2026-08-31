@@ -1,5 +1,7 @@
 # Studio Mode v2 方案
 
+> 历史设计快照（2026-08-26）。本文保留当时的范围判断；当前需求、实施顺序与验收状态以 [tasks/prd-agent-music-visual-studio.md](../tasks/prd-agent-music-visual-studio.md)、[docs/使用与开发流程.md](使用与开发流程.md) 与 [PROJECT_STATE.md](../PROJECT_STATE.md) 为准。
+
 ## 定位
 
 v1 证明“Agent 生成歌曲，Folia 负责渲染与导出”的技术链路成立。v2 的目标不是继续加接口，而是把它们变成一个个人创作产品：用户和 Agent 讨论一首歌，同时看到舞台反应，并能持续调教视觉。
@@ -17,6 +19,7 @@ v1 证明“Agent 生成歌曲，Folia 负责渲染与导出”的技术链路�
    - 三个初始配方：夏夜霓虹、雨窗民谣、Livehouse 现场。
    - 可调维度：能量、色温、高潮氛围。
    - 配方随歌曲保存，刷新后仍生效。
+   - 数据库存储字段名为 `visual_recipe`；API 与 UI 序列化字段名为 `visualRecipe`，两者是同一份歌曲配方的存储名和传输名。
 
 3. 第一版可感知渲染
    - 配方通过 Folia web 舞台的 `visualizer` / `cfg` 参数映射到原生视觉模式、主题色、动画强度与背景模式。
@@ -44,7 +47,7 @@ flowchart LR
   F --> G[Folia 原生导出]
 ```
 
-## 下一阶段
+## 当时设想的下一阶段
 
 1. Agent 识别“更暗一点”“副歌炸开”“像雨夜车窗”这类反馈，自动改配方。
 2. 在真实 Stage 播放会话中目视验证三种配方对 Folia 原生舞台的实际效果。

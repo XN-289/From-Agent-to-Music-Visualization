@@ -1,0 +1,126 @@
+{
+  "auditedAt": "2026-08-31T08:39:41.016Z",
+  "songId": "1b919ff0-a129-476e-b50e-06db2d462953",
+  "jobId": "042ca68c-18b9-4522-9bc0-731f8e1849a3",
+  "provider": {
+    "id": "mock",
+    "jobStatus": "completed",
+    "apiMode": "mock"
+  },
+  "database": {
+    "songStatus": "completed",
+    "progress": 100,
+    "stage": "完成",
+    "error": null
+  },
+  "duration": {
+    "providerVariantSec": 24,
+    "wavHeaderDurationSec": 24,
+    "sampleRate": 22050,
+    "byteRate": 44100
+  },
+  "expectedTimeline": [
+    {
+      "startMs": 0,
+      "endMs": 2400,
+      "text": "夜明けのつぶやき"
+    },
+    {
+      "startMs": 2400,
+      "endMs": 6400,
+      "text": "街の灯りが揺れる"
+    },
+    {
+      "startMs": 6400,
+      "endMs": 10400,
+      "text": "君の声を思い出す"
+    },
+    {
+      "startMs": 10400,
+      "endMs": 16000,
+      "text": "夏の花火が上がる"
+    },
+    {
+      "startMs": 16000,
+      "endMs": 21600,
+      "text": "この瞬間を忘れない"
+    },
+    {
+      "startMs": 21600,
+      "endMs": 24000,
+      "text": "また明日"
+    }
+  ],
+  "checks": {
+    "lrcExactMatch": true,
+    "firstStartsAtZero": true,
+    "lastEndsAtSongDuration": true,
+    "startsNonDecreasing": true,
+    "noOverlap": true,
+    "nonNegative": true,
+    "translationTimelineAligned": true,
+    "expectedBoundaryMs": [
+      [
+        0,
+        2400
+      ],
+      [
+        2400,
+        6400
+      ],
+      [
+        6400,
+        10400
+      ],
+      [
+        10400,
+        16000
+      ],
+      [
+        16000,
+        21600
+      ],
+      [
+        21600,
+        24000
+      ]
+    ]
+  },
+  "files": {
+    "audio-01-v0.wav": {
+      "exists": true,
+      "bytes": 1058444,
+      "sha256": "0e52e4a0413214b921a87cd8413b6813d05a653ba44ba3ef1ffc9c94b3e74793"
+    },
+    "audio-02-v1.wav": {
+      "exists": true,
+      "bytes": 1058444,
+      "sha256": "87fbed7e873b52faafe6e3e6cd8bc9c606b68d85197a055c5466e6f587e545c6"
+    },
+    "cover.png": {
+      "exists": true,
+      "bytes": 120868,
+      "sha256": "4d42e0f55f31fb7a7ab3362b639234255530ca139aa821bf224b648c8834c5e4"
+    },
+    "lyrics.lrc": {
+      "exists": true,
+      "bytes": 200,
+      "sha256": "24391904dbc797434f2734729b4dc4e066407a15ae9bafca6fc65c274d7e9584"
+    },
+    "lyrics.t.lrc": {
+      "exists": true,
+      "bytes": 158,
+      "sha256": "c0a4fc2db226284306d576d67888a17cd5dba38d1524dde2486cb0ba7471cd55"
+    },
+    "lyrics.txt": {
+      "exists": true,
+      "bytes": 292,
+      "sha256": "e7df930ffad16286d3abb8981dd44b809815a39347dcb96fc60d624383c8266b"
+    },
+    "meta.json": {
+      "exists": true,
+      "bytes": 2313,
+      "sha256": "492cdfa093f3048065f3c337adf17ba58e53b6fd3bb42ccae6456a21c3102572"
+    }
+  }
+}

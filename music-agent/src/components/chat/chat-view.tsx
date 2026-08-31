@@ -33,6 +33,7 @@ interface ToolMsg {
   title: string;
   isError?: boolean;
   errorText?: string;
+  trackStageDelivery?: boolean;
 }
 
 interface ChatMsg {
@@ -214,6 +215,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                     songId: m.tools[0].songId,
                     title: m.tools[0].title ?? "新歌",
                     isError: m.tools[0].isError,
+                    trackStageDelivery: false,
                   }
                 : undefined,
             done: true,
@@ -335,6 +337,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                           kind: "tool",
                           toolCallId: `t${idRef.current}`,
                           title: d.args?.title ?? "新歌",
+                          trackStageDelivery: true,
                         },
                       }
                     : m,
@@ -359,6 +362,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                           songId: d.result?.songId,
                           isError: d.isError,
                           errorText: d.errorText,
+                          trackStageDelivery: m.tool.trackStageDelivery,
                         },
                       }
                     : m,
@@ -625,6 +629,7 @@ export function ChatView({ recentSongs }: { recentSongs?: SongCardData[] }) {
                       songId={m.tool.songId}
                       title={m.tool.title}
                       autoPlay={index === messages.length - 1}
+                      trackStageDelivery={m.tool.trackStageDelivery ?? false}
                     />
                   ) : m.tool.isError ? (
                     m.tool.errorText ? (

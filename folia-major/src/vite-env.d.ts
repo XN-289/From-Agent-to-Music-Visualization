@@ -89,6 +89,8 @@ declare global {
     | { type: 'start-export'; preset: ElectronVideoExportPreset; startMode: ElectronVideoExportStartMode }
     | { type: 'stop-export' }
     | { type: 'cancel-export' }
+    | { type: 'start-batch-export'; job: ElectronBatchVideoExportJob }
+    | { type: 'cancel-batch-export' }
     | { type: 'toggle-like' };
 
   type ElectronVideoExportStatus =
@@ -119,6 +121,48 @@ declare global {
     countdown: number | null;
     filePath: string | null;
     error: string | null;
+  }
+
+  type ElectronBatchVideoExportStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
+  type ElectronBatchVideoExportPhase = 'queued' | 'preparing' | 'countdown' | 'recording' | 'finalizing';
+
+  interface ElectronBatchVideoExportOutput {
+    orientation: 'landscape' | 'portrait';
+    width: number;
+    height: number;
+    fileName: string;
+    filePath: string;
+    sizeBytes: number | null;
+  }
+
+  interface ElectronBatchVideoExportJob {
+    id: string;
+    songId: string;
+    sessionId: string;
+    title: string;
+    status: ElectronBatchVideoExportStatus;
+    phase: ElectronBatchVideoExportPhase;
+    orientation: 'landscape' | 'portrait' | null;
+    progress: number;
+    elapsed: number;
+    duration: number;
+    outputDirectory: string;
+    outputs: ElectronBatchVideoExportOutput[];
+    startedAt: number;
+    updatedAt: number;
+    finishedAt: number | null;
+    error: string | null;
+  }
+
+  interface ElectronBatchVideoExportUpdate {
+    jobId: string;
+    status?: ElectronBatchVideoExportStatus;
+    phase?: ElectronBatchVideoExportPhase;
+    orientation?: 'landscape' | 'portrait' | null;
+    progress?: number;
+    elapsed?: number;
+    outputs?: ElectronBatchVideoExportOutput[];
+    error?: string | null;
   }
 
   interface ElectronWindowCaptureSource {
@@ -584,6 +628,7 @@ declare global {
       prepareVideoExportWindow: (size: { width: number; height: number }) => Promise<boolean>;
       restoreVideoExportWindow: () => Promise<boolean>;
       writeVideoExportFile: (filePath: string, data: ArrayBuffer) => Promise<boolean>;
+      updateStageExportJob: (update: ElectronBatchVideoExportUpdate) => Promise<boolean>;
       getStageStatus: () => Promise<StageStatus>;
       setStageEnabled: (enabled: boolean) => Promise<StageStatus>;
       regenerateStageToken: () => Promise<StageStatus>;

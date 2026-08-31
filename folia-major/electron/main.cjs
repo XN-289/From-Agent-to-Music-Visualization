@@ -11,6 +11,10 @@ const { createQqAuthSessionRepository } = require('./qqAuthSessionRepository.cjs
 const { DEFAULT_DISCORD_APPLICATION_ID, createDiscordPresenceController } = require('./discordPresence.cjs');
 const { createVoiceInputPauseMonitor } = require('./voiceInputPause.cjs');
 const { createDisplaySleepBlocker } = require('./displaySleepBlocker.cjs');
+const {
+  getVideoExportWindowPlan,
+  matchesVideoExportContent,
+} = require('./videoExportWindow.cjs');
 const { createLyricApi } = require('./lyricApi.cjs');
 const { createLocalCoverAssetStore, getLocalCoverAssetDirectory } = require('./localCoverAssets.cjs');
 const { getReleaseUrl, getUpdateProviderConfig, resolveReleaseChannel } = require('./updateChannels.cjs');
@@ -444,6 +448,7 @@ const stageApi = createStageApi({
   stageApiPortSettingKey: STAGE_API_PORT_SETTING_KEY,
   defaultStageApiPort: DEFAULT_STAGE_API_PORT,
   getNeteasePort: () => assignedPort,
+  openExportDirectory: (directory) => shell.openPath(directory),
 });
 
 const lyricApi = createLyricApi({
@@ -3795,6 +3800,14 @@ ipcMain.handle('stage-complete-player-queue', (event, result) => {
   return stageApi.completeStagePlayerQueueRequest(result);
 });
 
+ipcMain.handle('stage-update-export-job', (event, update) => {
+  if (!isTrustedMainWindowContents(event.sender)) {
+    throw new Error('Untrusted renderer attempted to update a Stage export job.');
+  }
+
+  return stageApi.updateStageExportJob(update);
+});
+
 ipcMain.handle('thumbar-update-buttons', (event, state) => {
   if (!isTrustedMainWindowContents(event.sender)) {
     throw new Error('Untrusted renderer attempted to update taskbar controls.');
@@ -3998,10 +4011,14 @@ ipcMain.handle('video-export-prepare-window', (event, size) => {
   }
 
   if (!videoExportWindowRestoreState) {
+    const [minimumWidth, minimumHeight] = mainWindow.getMinimumSize();
     videoExportWindowRestoreState = {
       bounds: mainWindow.getBounds(),
       isMaximized: mainWindow.isMaximized(),
       isFullScreen: mainWindow.isFullScreen(),
+      minimumWidth,
+      minimumHeight,
+      zoomFactor: mainWindow.webContents.getZoomFactor(),
     };
   }
 
@@ -4013,9 +4030,58 @@ ipcMain.handle('video-export-prepare-window', (event, size) => {
     mainWindow.unmaximize();
   }
 
-  mainWindow.setContentSize(exportSize.width, exportSize.height, true);
+  const mainWindowBounds = mainWindow.getBounds();
+  const mainWindowContentSize = mainWindow.getContentSize();
+  const mainWindowWorkArea = screen.getDisplayMatching(mainWindowBounds).workArea;
+  const windowPlan = getVideoExportWindowPlan(exportSize, {
+    bounds: mainWindowBounds,
+    contentSize: mainWindowContentSize,
+    workArea: mainWindowWorkArea,
+  });
+  if (!windowPlan) {
+    console.warn('[Electron] Video export target does not fit a supported window zoom.', {
+      target: exportSize,
+      bounds: mainWindowBounds,
+      contentSize: mainWindowContentSize,
+      workArea: mainWindowWorkArea,
+      displays: screen.getAllDisplays().map(display => ({
+        bounds: display.bounds,
+        workArea: display.workArea,
+        scaleFactor: display.scaleFactor,
+      })),
+    });
+    return false;
+  }
+
+  mainWindow.webContents.setZoomFactor(windowPlan.zoomFactor);
+  mainWindow.setMinimumSize(windowPlan.contentWidth, windowPlan.contentHeight);
+  mainWindow.setContentSize(windowPlan.contentWidth, windowPlan.contentHeight, true);
   mainWindow.center();
   mainWindow.focus();
+
+  const actualContentSize = mainWindow.getContentSize();
+  const actualZoomFactor = mainWindow.webContents.getZoomFactor();
+  if (
+    !matchesVideoExportContent(actualContentSize, {
+      width: windowPlan.contentWidth,
+      height: windowPlan.contentHeight,
+    }) ||
+    Math.abs(actualZoomFactor - windowPlan.zoomFactor) >= 0.001
+  ) {
+    console.warn('[Electron] Video export window was clamped by the display.', {
+      target: exportSize,
+      plan: windowPlan,
+      actualContentSize,
+      actualZoomFactor,
+    });
+    return false;
+  }
+
+  console.log('[Electron] Prepared video export window.', {
+    target: exportSize,
+    contentSize: actualContentSize,
+    zoomFactor: actualZoomFactor,
+  });
   return true;
 });
 
@@ -4031,6 +4097,8 @@ ipcMain.handle('video-export-restore-window', (event) => {
 
   const restoreState = videoExportWindowRestoreState;
   videoExportWindowRestoreState = null;
+  mainWindow.webContents.setZoomFactor(restoreState.zoomFactor);
+  mainWindow.setMinimumSize(restoreState.minimumWidth, restoreState.minimumHeight);
   mainWindow.setBounds(restoreState.bounds, true);
 
   if (restoreState.isFullScreen) {

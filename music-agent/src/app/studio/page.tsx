@@ -1,6 +1,7 @@
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { foliaWebUrl } from "@/lib/folia-stage";
+import { getProvider } from "@/lib/providers";
 import { normalizeVisualRecipe } from "@/lib/visual-recipe";
 import { StudioWorkspace, type StudioSong } from "@/components/studio/studio-workspace";
 
@@ -14,6 +15,7 @@ export default async function StudioPage() {
     status: song.status,
     progress: song.progress,
     visualRecipe: normalizeVisualRecipe(song.visualRecipe),
+    stageDeliveryStatus: song.stageDeliveryStatus,
     createdAt: song.createdAt.getTime(),
   }));
 
@@ -21,5 +23,12 @@ export default async function StudioPage() {
     (song) => song.status === "submitted" || song.status === "generating",
   );
 
-  return <StudioWorkspace songs={songs} foliaBaseUrl={foliaWebUrl()} hasProcessing={hasProcessing} />;
+  return (
+    <StudioWorkspace
+      songs={songs}
+      foliaBaseUrl={foliaWebUrl()}
+      hasProcessing={hasProcessing}
+      providerId={getProvider().id}
+    />
+  );
 }

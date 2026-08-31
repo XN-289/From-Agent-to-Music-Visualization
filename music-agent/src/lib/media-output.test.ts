@@ -147,6 +147,33 @@ describe('validatePersistedSongBundle', () => {
     ).resolves.toEqual([]);
   });
 
+  it('rejects Japanese lyrics without complete aligned translation subtitles', async () => {
+    const metaPath = path.join(dir, 'meta.json');
+    await writeFile(metaPath, '{}');
+
+    const issues = await validatePersistedSongBundle({
+      songId: 'song-jp',
+      directory: dir,
+      metaPath,
+      lyricsTxtPath: path.join(dir, 'lyrics.txt'),
+      lyricsLrcPath: path.join(dir, 'lyrics.lrc'),
+      lyricsTLrcPath: null,
+      coverPath: null,
+      audioPaths: [],
+      title: '日文歌',
+      lyrics: '[Verse]\n夜風が答えを運ぶ\n// 晚风带来答案',
+      styleTags: null,
+      prompt: null,
+      jobId: 'job-jp',
+      providerId: 'mock',
+      variants: [],
+      lrc: [{ startMs: 0, endMs: 4000, text: '夜風が答えを運ぶ' }],
+      tLrc: [],
+    });
+
+    expect(issues).toContain('日文翻译副字幕缺失或时间轴不一致');
+  });
+
   it('rejects a bundle when any generated audio variant is unreadable', async () => {
     const audioPath = path.join(dir, 'audio-01-test.mp3');
     const missingAudioPath = path.join(dir, 'audio-02-missing.mp3');

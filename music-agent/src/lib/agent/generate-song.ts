@@ -10,6 +10,7 @@ import {
   transitionGenerationStatus,
   type GenerationJobStatus,
 } from '@/lib/generation-state';
+import { assertJapaneseTranslationComplete } from './generation-request';
 
 export interface SubmitGenerationInput {
   title: string;
@@ -23,6 +24,10 @@ export interface SubmitGenerationInput {
 }
 
 export async function submitGeneration(input: SubmitGenerationInput, chatId?: string) {
+  // Shared pre-paid gate: every entry point must reject incomplete Japanese lyrics
+  // before a provider or database operation can be attempted.
+  assertJapaneseTranslationComplete(input.lyrics);
+
   const provider = getProvider();
   const songId = crypto.randomUUID();
   // 提交 Suno 前剥离翻译行（DB 保留完整歌词，翻译行用于 t.lrc 与 Folia 副字幕）

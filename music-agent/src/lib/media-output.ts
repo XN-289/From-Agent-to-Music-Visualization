@@ -1,10 +1,12 @@
 import { constants } from 'node:fs';
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { LyricsLine } from '@/lib/audio/lrc';
+import { areTranslationTimestampsAligned, type LyricsLine } from '@/lib/audio/lrc';
+import { detectLyricLanguage } from '@/lib/audio/lyric-language';
 import { renderCoverPng } from '@/lib/cover';
 import { isDecodableCoverFile, isPlayableAudioFile } from '@/lib/media-probe';
 import { extensionForImageUrl } from '@/lib/media-mime';
+import { embedSongMetadata } from '@/lib/mp3-metadata';
 import type { SongVariant } from '@/lib/providers/types';
 
 export interface PersistSongInput {
@@ -108,6 +110,8 @@ async function downloadFile(url: string, destination: string): Promise<void> {
 }
 
 function extensionForUrl(url: string): string {
+  const dataMatch = url.match(/^data:audio\/(mp3|wav|flac|m4a)(?:[;,]|$)/i);
+  if (dataMatch) return dataMatch[1].toLowerCase();
   const pathname = url.split(/[?#]/, 1)[0].toLowerCase();
   const match = pathname.match(/\.(mp3|wav|flac|m4a)$/);
   if (match) return match[1];
@@ -147,7 +151,7 @@ function resolveAudioUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   const configuredOrigin = process.env.MUSIC_AGENT_ORIGIN?.trim().replace(/\/$/, '');
   if (configuredOrigin) return `${configuredOrigin}${url.startsWith('/') ? url : `/${url}`}`;
-  const port = process.env.PORT?.trim() || '3000';
+  const port = process.env.PORT?.trim() || '3003';
   return `http://127.0.0.1:${port}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
@@ -173,12 +177,20 @@ export async function validatePersistedSongBundle(bundle: LoadedSongBundle): Pro
     (await isReadableFile(bundle.lyricsLrcPath));
   const coverReadable = await isDecodableCoverFile(bundle.coverPath);
   const metaReadable = await isReadableFile(bundle.metaPath);
+  const translationFileReadable =
+    bundle.tLrc.length === 0 || (await isReadableFile(bundle.lyricsTLrcPath));
+  const translationAligned = areTranslationTimestampsAligned(bundle.lrc, bundle.tLrc);
+  const japaneseLyrics = detectLyricLanguage(bundle.lyrics ?? '') === 'japanese';
+  const translationComplete = !japaneseLyrics || bundle.tLrc.length > 0;
 
   return [
     audioReadable ? null : '音频缺失或不可读',
     lyricsReadable ? null : '歌词缺失',
     coverReadable ? null : '封面缺失或不可读',
     metaReadable ? null : '元数据缺失或不可读',
+    translationFileReadable && translationAligned && translationComplete
+      ? null
+      : '日文翻译副字幕缺失或时间轴不一致',
   ].filter((issue): issue is string => issue !== null);
 }
 
@@ -271,6 +283,22 @@ export async function persistGeneratedSong(input: PersistSongInput): Promise<Per
       console.warn('[media-output] 封面渲染失败:', e instanceof Error ? e.message : String(e));
     }
   }
+
+  const lyricsTLrc = input.tLrc.length ? lyricsToLrc(input.tLrc) : null;
+  await Promise.all(
+    audioPaths
+      .filter((audio) => audio.path.toLowerCase().endsWith('.mp3'))
+      .map((audio) =>
+        embedSongMetadata(audio.path, {
+          title: input.title,
+          artist: 'Music Agent',
+          album: 'Music Agent',
+          lrc: lyricsLrc,
+          tLrc: lyricsTLrc,
+          coverPath,
+        }),
+      ),
+  );
 
   return {
     songId: input.songId,

@@ -20,7 +20,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const now = new Date();
   await db
     .update(schema.songs)
-    .set({ visualRecipe: recipe, updatedAt: now })
+    .set({
+      visualRecipe: recipe,
+      stageDeliveryStatus: 'pending',
+      stageDeliveryError: null,
+      stageDeliveryUpdatedAt: now,
+      updatedAt: now,
+    })
     .where(eq(schema.songs.id, id));
 
   return Response.json({ ok: true, recipe });

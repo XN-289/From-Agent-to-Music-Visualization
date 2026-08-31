@@ -74,6 +74,11 @@ import { ObsBrowserSourceLyrics } from './components/obs/ObsBrowserSourceLyrics'
 import { useSessionRestoreController } from './hooks/useSessionRestoreController';
 import { useStagePlaybackController } from './hooks/useStagePlaybackController';
 import { useSongThemeAutoGeneration } from './hooks/useSongThemeAutoGeneration';
+import {
+    initialStageAppearanceSessionState,
+    resolveStageAppearanceDecision,
+    selectStageAppearanceTheme,
+} from './services/stageAppearanceSession';
 import { useThemeController } from './hooks/useThemeController';
 import { useOnlineSongMetadataHydration } from './hooks/useOnlineSongMetadataHydration';
 import { useThemeQuickEditorStore } from './stores/useThemeQuickEditorStore';
@@ -292,6 +297,8 @@ export default function App() {
     // and related actions like toggling cover color backgrounds and static mode,
     // as well as setting daylight mode preference
     const appPreferences = useAppPreferences(setStatusMsg);
+    const applyStageAppearanceOverride = useSettingsUiStore(state => state.applyStageAppearanceOverride);
+    const restoreStageAppearanceSnapshot = useSettingsUiStore(state => state.restoreStageAppearanceSnapshot);
     const {
         audioQuality,
         setAudioQuality,
@@ -742,6 +749,8 @@ export default function App() {
     const {
         theme,
         setTheme,
+        setStageTheme,
+        stageLocalThemes,
         aiTheme,
         customTheme,
         hasCustomTheme,
@@ -1093,39 +1102,50 @@ export default function App() {
         navigateToPlayer,
     });
 
-    const lastAppliedStageVisualConfigRef = useRef<number | null>(null);
+    const stageAppearanceSessionRef = useRef(initialStageAppearanceSessionState);
 
     useEffect(() => {
-        const visualConfig = stageMediaSession?.visualConfig;
-        if (!visualConfig || !stageMediaSession?.updatedAt) {
-            return;
+        const decision = resolveStageAppearanceDecision({
+            currentAppearance: {
+                themes: stageLocalThemes,
+                visualizerMode,
+                visualizerBackgroundMode,
+                backgroundOpacity,
+                visualizerOpacity,
+                useCoverColorBg,
+                disableVisualizerGeometricBackground,
+                disableVisualizerVignette,
+            },
+            isDaylight,
+            session: stageMediaSession,
+            state: stageAppearanceSessionRef.current,
+        });
+
+        stageAppearanceSessionRef.current = decision.state;
+
+        if (decision.type === 'apply' && stageMediaSession?.visualConfig) {
+            const visualConfig = stageMediaSession.visualConfig;
+            setStageTheme(isDaylight ? visualConfig.theme.light : visualConfig.theme.dark);
+            applyStageAppearanceOverride(visualConfig);
         }
 
-        if (lastAppliedStageVisualConfigRef.current === stageMediaSession.updatedAt) {
-            return;
+        if (decision.type === 'restore') {
+            setStageTheme(selectStageAppearanceTheme(decision.appearance, isDaylight));
+            restoreStageAppearanceSnapshot(decision.appearance);
         }
-
-        lastAppliedStageVisualConfigRef.current = stageMediaSession.updatedAt;
-        const selectedTheme = isDaylight ? visualConfig.theme.light : visualConfig.theme.dark;
-
-        setTheme(selectedTheme);
-        handleSetVisualizerMode(visualConfig.visualizerMode);
-        handleSetVisualizerBackgroundMode(visualConfig.visualizerBackgroundMode);
-        handleSetBackgroundOpacity(visualConfig.backgroundOpacity);
-        handleSetVisualizerOpacity(visualConfig.visualizerOpacity);
-        handleToggleCoverColorBg(visualConfig.useCoverColorBg);
-        handleToggleDisableVisualizerVignette(visualConfig.disableVisualizerVignette);
-        handleToggleDisableVisualizerGeometricBackground(visualConfig.disableVisualizerGeometricBackground);
     }, [
-        handleSetBackgroundOpacity,
-        handleSetVisualizerBackgroundMode,
-        handleSetVisualizerMode,
-        handleSetVisualizerOpacity,
-        handleToggleCoverColorBg,
-        handleToggleDisableVisualizerGeometricBackground,
-        handleToggleDisableVisualizerVignette,
+        applyStageAppearanceOverride,
+        backgroundOpacity,
+        disableVisualizerGeometricBackground,
+        disableVisualizerVignette,
         isDaylight,
-        setTheme,
+        restoreStageAppearanceSnapshot,
+        setStageTheme,
+        stageLocalThemes,
+        useCoverColorBg,
+        visualizerBackgroundMode,
+        visualizerMode,
+        visualizerOpacity,
         stageMediaSession,
     ]);
 

@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChatView } from "@/components/chat/chat-view";
 import { ProcessingRefresher } from "@/components/song/processing-refresher";
+import { FoliaExportPanel } from "@/components/studio/folia-export-panel";
+import { StagePreview } from "@/components/studio/stage-preview";
+import { providerModeLabel } from "@/components/studio/stage-preview-state";
+import { VisualRecipeExpectation } from "@/components/studio/visual-recipe-expectation";
 import {
   VISUAL_RECIPE_PRESETS,
   getVisualRecipePreset,
@@ -13,8 +17,9 @@ import {
 } from "@/lib/visual-recipe";
 import { buildFoliaVisualRecipeUrl } from "@/lib/visual-recipe-to-folia";
 import type { GenerationStatus } from "@/lib/generation-state";
+import type { StageDeliveryStatus } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
-import { ExternalLink, Loader2, RefreshCw, Save } from "lucide-react";
+import { ExternalLink, Loader2, Save } from "lucide-react";
 
 export interface StudioSong {
   id: string;
@@ -22,17 +27,31 @@ export interface StudioSong {
   status: GenerationStatus;
   progress: number;
   visualRecipe: VisualRecipe | null;
+  stageDeliveryStatus: StageDeliveryStatus;
   createdAt: number;
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(timeout);
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }
 
 export function StudioWorkspace({
   songs,
   foliaBaseUrl,
   hasProcessing,
+  providerId,
 }: {
   songs: StudioSong[];
   foliaBaseUrl: string;
   hasProcessing: boolean;
+  providerId: string;
 }) {
   const initialSong = songs.find((song) => song.status === "completed") ?? songs[0] ?? null;
   const [selectedId, setSelectedId] = useState(initialSong?.id ?? "");
@@ -42,24 +61,32 @@ export function StudioWorkspace({
   const [saving, setSaving] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [stageKey, setStageKey] = useState(0);
+  const [deliveryOverrides, setDeliveryOverrides] = useState<Record<string, StageDeliveryStatus>>({});
+  const [newSong, setNewSong] = useState<StudioSong | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const knownCompletedRef = useRef<Set<string> | null>(null);
 
   const doneSongs = useMemo(
     () => songs.filter((song) => song.status === "completed"),
     [songs],
   );
   const activePreset = recipe ? getVisualRecipePreset(recipe.id) : null;
+  const selectedDeliveryStatus = selected
+    ? deliveryOverrides[selected.id] ?? selected.stageDeliveryStatus
+    : null;
+  const previewRecipe = useDebouncedValue(recipe, 350);
   const stageUrl = useMemo(() => {
-    if (!recipe) {
+    if (!previewRecipe) {
       return `${foliaBaseUrl.replace(/\/$/, "")}?${new URLSearchParams({
         obs: "1",
         obsSource: "now-playing",
         obsTheme: "static",
       }).toString()}`;
     }
-    return buildFoliaVisualRecipeUrl(foliaBaseUrl, recipe);
-  }, [foliaBaseUrl, recipe]);
+    return buildFoliaVisualRecipeUrl(foliaBaseUrl, previewRecipe);
+  }, [foliaBaseUrl, previewRecipe]);
 
   function selectSong(song: StudioSong) {
     setSelectedId(song.id);
@@ -67,7 +94,25 @@ export function StudioWorkspace({
     setSavedRecipe(song.visualRecipe);
     setMessage(null);
     setError(null);
+    setSaveError(null);
+    if (newSong?.id === song.id) setNewSong(null);
   }
+
+  useEffect(() => {
+    if (!knownCompletedRef.current) {
+      knownCompletedRef.current = new Set(
+        songs.filter((song) => song.status === "completed").map((song) => song.id),
+      );
+      return;
+    }
+    const fresh = songs.filter(
+      (song) => song.status === "completed" && !knownCompletedRef.current?.has(song.id),
+    );
+    if (fresh.length === 0) return;
+    for (const song of fresh) knownCompletedRef.current.add(song.id);
+    const candidate = fresh[fresh.length - 1];
+    if (candidate.id !== selected?.id) setNewSong(candidate);
+  }, [selected?.id, songs]);
 
   function applyPreset(nextId: VisualRecipe["id"]) {
     const preset = getVisualRecipePreset(nextId);
@@ -82,7 +127,7 @@ export function StudioWorkspace({
   async function saveRecipe() {
     if (!selected || !recipe || saving) return;
     setSaving(true);
-    setError(null);
+    setSaveError(null);
     setMessage(null);
     try {
       const res = await fetch(`/api/songs/${selected.id}/visual-recipe`, {
@@ -90,12 +135,18 @@ export function StudioWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipe }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string };
+      const data = (await res.json()) as { ok?: boolean; error?: string; recipe?: unknown };
       if (!res.ok || !data.ok) throw new Error(data.error ?? `保存失败（${res.status}）`);
-      setSavedRecipe(recipe);
+      const saved = normalizeVisualRecipe(data.recipe ?? recipe);
+      if (!saved) throw new Error("服务器返回的视觉配方不合法");
+      setRecipe(saved);
+      setSavedRecipe(saved);
+      if (selected) {
+        setDeliveryOverrides((prev) => ({ ...prev, [selected.id]: "pending" }));
+      }
       setMessage("视觉配方已保存");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -111,6 +162,9 @@ export function StudioWorkspace({
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !data.ok) throw new Error(data.error ?? `推送失败（${res.status}）`);
       setStageKey((key) => key + 1);
+      if (selected) {
+        setDeliveryOverrides((prev) => ({ ...prev, [selected.id]: "pushed" }));
+      }
       setMessage("已推送到舞台");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -120,14 +174,29 @@ export function StudioWorkspace({
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-8.5rem)] max-w-[1800px] flex-col gap-4 px-4 py-4">
+    <div className="mx-auto flex h-full max-w-[1800px] flex-col gap-4 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Studio</h1>
           <p className="text-xs text-muted-foreground">创作、舞台与视觉配方同屏</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <span
+            data-provider-mode={providerId}
+            className="inline-flex h-6 items-center rounded-full border bg-card px-2.5 text-xs font-medium"
+            title={`当前 Suno Provider：${providerId}`}
+          >
+            {providerModeLabel(providerId)}
+          </span>
           {selected && <span className="text-xs text-muted-foreground">{selected.title}</span>}
+          {selected && selectedDeliveryStatus === "needs_retry" && (
+            <span className="text-xs text-amber-600 dark:text-amber-300">Stage 待重推</span>
+          )}
+          {newSong && newSong.id !== selected?.id && (
+            <Button variant="outline" size="sm" onClick={() => selectSong(newSong)}>
+              去查看新歌：{newSong.title}
+            </Button>
+          )}
           <Button variant="outline" size="sm" disabled={!selected || selected.status !== "completed" || pushing} onClick={() => void pushStage()}>
             {pushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
             推送舞台
@@ -135,7 +204,7 @@ export function StudioWorkspace({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)_400px]">
+      <div className="grid min-h-0 flex-1 gap-4 grid-rows-[minmax(0,0.75fr)_minmax(0,1fr)_minmax(0,1.25fr)] lg:grid-cols-[240px_minmax(0,1fr)_400px] lg:grid-rows-[minmax(0,1fr)]">
         <aside className="min-h-0 overflow-y-auto rounded-lg border bg-card">
           <div className="sticky top-0 border-b bg-card/95 px-4 py-3 text-xs font-medium text-muted-foreground backdrop-blur">
             作品
@@ -158,7 +227,11 @@ export function StudioWorkspace({
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {song.status === "submitted" || song.status === "generating"
                     ? `生成中 ${song.progress}%`
-                    : new Date(song.createdAt).toLocaleDateString()}
+                    : `${new Date(song.createdAt).toLocaleDateString()}${
+                        (deliveryOverrides[song.id] ?? song.stageDeliveryStatus) === "needs_retry"
+                          ? " · Stage 待重推"
+                          : ""
+                      }`}
                 </span>
               </button>
             ))}
@@ -178,31 +251,19 @@ export function StudioWorkspace({
         </section>
 
         <aside className="min-h-0 space-y-4 overflow-y-auto pb-2">
-          <section className="overflow-hidden rounded-lg border bg-card">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <h2 className="text-sm font-medium">舞台</h2>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="刷新舞台"
-                onClick={() => setStageKey((key) => key + 1)}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <div className="relative aspect-video bg-black">
-              <iframe
-                key={stageKey}
-                src={stageUrl}
-                title="Folia Stage"
-                className="absolute inset-0 h-full w-full border-0"
-                allow="autoplay; clipboard-read; clipboard-write"
-              />
-            </div>
-          </section>
+          <StagePreview src={stageUrl} reloadToken={stageKey} />
 
           <section className="rounded-lg border bg-card p-4">
-            <h2 className="text-sm font-medium">视觉配方</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-medium">视觉期待</h2>
+              <span className="text-[11px] text-muted-foreground">当前歌曲</span>
+            </div>
+            <VisualRecipeExpectation
+              recipe={recipe}
+              savedRecipe={savedRecipe}
+              saving={saving}
+              error={saveError}
+            />
             <div className="mt-3 grid gap-2">
               {VISUAL_RECIPE_PRESETS.map((preset) => (
                 <button
@@ -259,15 +320,26 @@ export function StudioWorkspace({
               </span>
               <Button size="sm" disabled={!selected || !recipe || saving || !recipeChanged(savedRecipe, recipe)} onClick={() => void saveRecipe()}>
                 {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                保存
+                保存期待
               </Button>
             </div>
           </section>
+
+          {selected && (
+            <FoliaExportPanel
+              key={selected.id}
+              songId={selected.id}
+              savedRecipe={savedRecipe}
+              disabled={selected.status !== "completed" || recipeChanged(savedRecipe, recipe)}
+              disabledHint={recipeChanged(savedRecipe, recipe) ? "先保存当前视觉期待" : undefined}
+            />
+          )}
         </aside>
       </div>
 
       {message && <p className="text-xs text-primary">{message}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
+      {saveError && <p className="text-xs text-destructive">{saveError}</p>}
       <ProcessingRefresher hasProcessing={hasProcessing} />
     </div>
   );

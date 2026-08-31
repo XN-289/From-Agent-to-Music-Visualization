@@ -1,0 +1,136 @@
+{
+  "baselineCommit": "2978b22a2505b9c8d5cc0c797c147fabfc2720d7",
+  "tokenEstimator": "unicode-aware conservative estimate: ceil(ASCII chars / 4) + 1 per non-ASCII char",
+  "baseline": {
+    "files": [
+      "prompt.md",
+      "domain/scenarios.md",
+      "domain/lyric-writing.md",
+      "domain/style-tags.md",
+      "domain/song-structure.md",
+      "domain/chinese-style.md",
+      "domain/arrangement-vocal.md",
+      "domain/pronunciation-quirks.md",
+      "domain/quality-gates.md",
+      "workflow.md"
+    ],
+    "promptChars": 17674,
+    "estimatedTokens": 12022
+  },
+  "stages": [
+    {
+      "stage": "discovery",
+      "label": "需求挖掘",
+      "files": [
+        "stages/core.md",
+        "stages/discovery.md",
+        "domain/scenarios.md"
+      ],
+      "promptChars": 3027,
+      "estimatedTokens": 2082,
+      "reducedTokens": 9940,
+      "reductionPercent": 82.68,
+      "qualityRegression": {
+        "case": "模糊请求必须先给 2-3 个方向选项，且不得越过确认门禁",
+        "passed": true,
+        "missing": [],
+        "forbidden": []
+      }
+    },
+    {
+      "stage": "lyric",
+      "label": "写词",
+      "files": [
+        "stages/core.md",
+        "stages/lyric.md",
+        "domain/lyric-writing.md",
+        "domain/song-structure.md",
+        "domain/chinese-style.md",
+        "domain/pronunciation-quirks.md",
+        "domain/quality-gates.md"
+      ],
+      "promptChars": 8096,
+      "estimatedTokens": 5965,
+      "reducedTokens": 6057,
+      "reductionPercent": 50.38,
+      "qualityRegression": {
+        "case": "写词阶段必须保留具体画面、结构、双胞胎测试与日文逐行翻译规则",
+        "passed": true,
+        "missing": [],
+        "forbidden": []
+      }
+    },
+    {
+      "stage": "generation",
+      "label": "生成",
+      "files": [
+        "stages/core.md",
+        "stages/generation.md",
+        "domain/lyric-generation-checklist.md",
+        "domain/style-tags.md",
+        "domain/arrangement-vocal.md",
+        "domain/quality-gates.md"
+      ],
+      "promptChars": 6543,
+      "estimatedTokens": 4035,
+      "reducedTokens": 7987,
+      "reductionPercent": 66.44,
+      "qualityRegression": {
+        "case": "生成阶段必须保留标签数量、结构标记、时长模型、日文语言硬指令与一次调用纪律",
+        "passed": true,
+        "missing": [],
+        "forbidden": []
+      }
+    },
+    {
+      "stage": "iteration",
+      "label": "迭代",
+      "files": [
+        "stages/core.md",
+        "stages/iteration.md",
+        "domain/style-tags.md",
+        "domain/arrangement-vocal.md",
+        "domain/quality-gates.md"
+      ],
+      "promptChars": 6306,
+      "estimatedTokens": 3926,
+      "reducedTokens": 8096,
+      "reductionPercent": 67.34,
+      "qualityRegression": {
+        "case": "模糊试听反馈必须先定位，一次迭代只允许一次付费调用",
+        "passed": true,
+        "missing": [],
+        "forbidden": []
+      }
+    }
+  ],
+  "allStagesReduceAtLeastFortyPercent": true,
+  "allQualityRegressionsPass": true,
+  "snapshotHashes": [
+    {
+      "stage": "baseline",
+      "file": "baseline-system-prompt.md",
+      "sha256": "89cbbe553ebadc4534743f313733c316c04c257f6e848923ff71d79b92994bdb"
+    },
+    {
+      "stage": "discovery",
+      "file": "discovery-system-prompt.md",
+      "sha256": "08b89de03cb00c2b820d76f69961078f5f46f89770e53f554ceec427ca8da5e6"
+    },
+    {
+      "stage": "lyric",
+      "file": "lyric-system-prompt.md",
+      "sha256": "c95e02706615578c5bbcf8667a9d02e3cddeaa1f515f6479158f311f89c26d0c"
+    },
+    {
+      "stage": "generation",
+      "file": "generation-system-prompt.md",
+      "sha256": "3a3f7ed87c8bd428e9cd4a02006d7258efe35f635f8b68f61c53732a5e867347"
+    },
+    {
+      "stage": "iteration",
+      "file": "iteration-system-prompt.md",
+      "sha256": "856ce22e918a93d5326a695d26ed7ea1a08a5f8a2c225797c7655e7c471f0318"
+    }
+  ]
+}

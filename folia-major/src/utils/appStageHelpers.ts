@@ -46,3 +46,18 @@ export const buildStageEntryKey = (
 
     return null;
 };
+
+export const STAGE_STATUS_DISCONNECT_FAILURE_THRESHOLD = 3;
+
+export const clearStageStatusEntries = (status: StageStatus): StageStatus => {
+    if (!status.activeEntryKind && !status.lyricsSession && !status.mediaSession) {
+        return status;
+    }
+
+    return {
+        ...status,
+        activeEntryKind: null,
+        lyricsSession: null,
+        mediaSession: null,
+    };
+};

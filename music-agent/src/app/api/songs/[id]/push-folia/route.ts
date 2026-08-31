@@ -14,6 +14,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     );
   }
 
+  if (result.stageDeliveryStatus === 'needs_retry') {
+    return Response.json(
+      {
+        ok: false,
+        error: result.stageDeliveryError ?? 'Folia Stage 推送未完成',
+        stage: result.stage,
+        foliaWebUrl: result.stage?.foliaWebUrl,
+        stageDeliveryStatus: result.stageDeliveryStatus,
+      },
+      { status: 409 },
+    );
+  }
+
   if (result.stage && !result.stage.ok) {
     return Response.json(
       {
@@ -40,6 +53,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   return Response.json({
     ok: true,
     stage: result.stage,
+    stageDeliveryStatus: result.stageDeliveryStatus ?? 'pushed',
     foliaWebUrl: result.stage.foliaWebUrl,
     localDirectory: result.bundle.directory,
   });

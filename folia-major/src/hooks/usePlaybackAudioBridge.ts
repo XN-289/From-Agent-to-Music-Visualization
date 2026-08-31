@@ -7,6 +7,7 @@ import { saveAudioBlob } from '../services/audioCache';
 import { hasCachedSongAudio } from '../services/onlineMusic/resourceCache';
 import { getSongResourceCacheKey } from '../services/onlineMusic/resourceKeys';
 import { resolveNavidromePlaybackCarrier } from '../utils/appPlaybackGuards';
+import { applyAudioSourceTransition } from '../utils/audioSourceTransition';
 import { calculateReplayGain } from '../utils/replayGain';
 import { saveToCache } from '../services/db';
 import { applyAudioEqualizerSettings, connectAudioEqualizerGraph } from '../services/audioEqualizerGraph';
@@ -232,10 +233,11 @@ export function usePlaybackAudioBridge({
             return;
         }
 
-        if (audioSrc && previousAudioSrcRef.current && previousAudioSrcRef.current !== audioSrc) {
-            audioElement.pause();
-            audioElement.load();
-        }
+        applyAudioSourceTransition(
+            audioElement,
+            previousAudioSrcRef.current,
+            audioSrc,
+        );
 
         previousAudioSrcRef.current = audioSrc;
     }, [audioRef, audioSrc]);

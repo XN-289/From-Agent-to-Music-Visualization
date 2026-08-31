@@ -4,7 +4,12 @@ import type { RefObject } from 'react';
 import type { MotionValue } from 'framer-motion';
 import type { SongResult } from '../types';
 import type { RemoteControlCommand } from '../types/remoteControl';
-import type { VideoExportPreset, VideoExportState } from '../types/videoExport';
+import type {
+    BatchVideoExportJob,
+    BatchVideoExportOutput,
+    VideoExportPreset,
+    VideoExportState,
+} from '../types/videoExport';
 import { idleVideoExportState } from '../types/videoExport';
 import {
     buildDefaultVideoExportFileName,
@@ -277,9 +282,323 @@ export const useElectronVideoExportController = ({
         }
     }, [audioRef, currentSong, currentTime, duration, isElectronWindow, navigateToPlayer, pausePlayback, resumePlayback, setIsPanelOpen, setIsPlayerChromeHidden]);
 
+    const startBatchExport = useCallback(async (job: BatchVideoExportJob) => {
+        const electron = window.electron;
+        const localError = (message: string) => {
+            setExportState({
+                ...idleVideoExportState(),
+                status: 'error',
+                error: message,
+            });
+        };
+        const failPrecondition = async (reason: string, message: string) => {
+            localError(message);
+            console.warn('[Stage Export] Precondition failed.', {
+                jobId: job.id,
+                reason,
+            });
+            try {
+                await electron?.updateStageExportJob?.({
+                    jobId: job.id,
+                    status: 'failed',
+                    outputs: [],
+                    error: `Export precondition failed: ${reason}`,
+                });
+            } catch (error) {
+                console.warn('[Stage Export] Failed to report precondition failure.', error);
+            }
+        };
+
+        if (!isElectronWindow || runningRef.current) {
+            await failPrecondition(
+                !isElectronWindow ? 'not-electron-window' : 'another-export-is-running',
+                t('export.windowRecordingUnsupported'),
+            );
+            return;
+        }
+
+        const audioElement = audioRef.current;
+        if (!audioElement || !currentSong) {
+            localError(t('export.noRecordableContent'));
+            return;
+        }
+
+        if (
+            !electron?.getMainWindowCaptureSource ||
+            !electron.prepareVideoExportWindow ||
+            !electron.restoreVideoExportWindow ||
+            !electron.writeVideoExportFile ||
+            !electron.updateStageExportJob
+        ) {
+            await failPrecondition('electron-export-api-unavailable', t('export.windowRecordingUnsupported'));
+            return;
+        }
+
+        const stageSong = currentSong as SongResult & {
+            isStage?: boolean;
+            stageData?: { id?: string; durationMs?: number | null } | null;
+        };
+        if (!stageSong.isStage || stageSong.stageData?.id !== job.sessionId) {
+            await failPrecondition(
+                !stageSong.isStage
+                    ? 'current-song-is-not-stage-media'
+                    : `stage-session-mismatch:${stageSong.stageData?.id ?? 'none'}:${job.sessionId}`,
+                t('export.noRecordableContent'),
+            );
+            return;
+        }
+
+        const currentDurationMs = stageSong.stageData?.durationMs ?? currentSong.durationMs;
+        if (
+            !Number.isFinite(currentDurationMs) ||
+            currentDurationMs <= 0 ||
+            Math.abs(currentDurationMs / 1000 - job.duration) > 0.25
+        ) {
+            await failPrecondition(
+                `duration-mismatch:${currentDurationMs ?? 'none'}:${Math.round(job.duration * 1000)}`,
+                t('export.noRecordableContent'),
+            );
+            return;
+        }
+
+        const exportFormat = getSupportedVideoExportFormat();
+        if (!exportFormat) {
+            await failPrecondition('mp4-h264-aac-codec-unavailable', t('export.noExportCodec'));
+            return;
+        }
+
+        runningRef.current = true;
+        cancelRequestedRef.current = false;
+        const outputs: BatchVideoExportOutput[] = [];
+        const wasPaused = audioElement.paused;
+        const previousLoop = audioElement.loop;
+        const previousTime = audioElement.currentTime;
+        let videoStream: MediaStream | null = null;
+        let audioStream: MediaStream | null = null;
+        let combinedStream: MediaStream | null = null;
+        let progressIntervalId: number | null = null;
+        let endedListener: (() => void) | null = null;
+        let removeCursorGuard: (() => void) | null = null;
+
+        const updateJob = electron.updateStageExportJob.bind(electron);
+        const updateRunning = async (
+            phase: BatchVideoExportJob['phase'],
+            orientation: BatchVideoExportJob['orientation'],
+            progress: number,
+            elapsed: number,
+        ) => {
+            await updateJob({
+                jobId: job.id,
+                status: 'running',
+                phase,
+                orientation,
+                progress,
+                elapsed,
+                outputs,
+            });
+        };
+
+        try {
+            setExportState({
+                ...idleVideoExportState(),
+                status: 'preparing',
+                duration: job.duration * 2,
+                filePath: job.outputDirectory,
+            });
+
+            navigateToPlayer();
+            setIsPanelOpen(false);
+            setIsPlayerChromeHidden(true);
+            removeCursorGuard = installVideoExportCursorGuard();
+            audioElement.loop = false;
+
+            for (let segmentIndex = 0; segmentIndex < job.outputs.length; segmentIndex += 1) {
+                const target = job.outputs[segmentIndex];
+                const preset: VideoExportPreset = {
+                    id: `batch-${target.orientation}`,
+                    label: target.orientation === 'landscape' ? 'Landscape MP4' : 'Portrait MP4',
+                    width: target.width,
+                    height: target.height,
+                    orientation: target.orientation,
+                };
+                const segmentProgress = (phase: 'preparing' | 'recording' | 'finalizing', value: number) => {
+                    const progress = (segmentIndex + value) / job.outputs.length;
+                    const elapsed = segmentIndex * job.duration + value * job.duration;
+                    setExportState(prev => ({
+                        ...prev,
+                        status: phase,
+                        presetId: preset.id,
+                        countdown: null,
+                        progress,
+                        elapsed,
+                    }));
+                    return { progress, elapsed };
+                };
+
+                await updateRunning('preparing', target.orientation, segmentIndex / job.outputs.length, segmentIndex * job.duration);
+                segmentProgress('preparing', 0);
+                pausePlayback();
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                currentTime.set(0);
+
+                const prepared = await electron.prepareVideoExportWindow({
+                    width: target.width,
+                    height: target.height,
+                });
+                if (!prepared) throw new Error(t('export.windowResizeFailed'));
+                if (cancelRequestedRef.current) throw new Error(t('export.recordingCancelled'));
+
+                videoStream = await getMainWindowVideoCaptureStream(preset);
+                audioStream = getAudioElementCaptureStream(audioElement);
+                combinedStream = new MediaStream([
+                    ...videoStream.getVideoTracks(),
+                    ...audioStream.getAudioTracks(),
+                ]);
+
+                for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining -= 1) {
+                    await updateRunning('countdown', target.orientation, segmentIndex / job.outputs.length, segmentIndex * job.duration);
+                    setExportState(prev => ({
+                        ...prev,
+                        status: 'countdown',
+                        presetId: preset.id,
+                        countdown: remaining,
+                    }));
+                    await wait(1000);
+                    if (cancelRequestedRef.current) throw new Error(t('export.recordingCancelled'));
+                }
+
+                const chunks: Blob[] = [];
+                const recorder = new MediaRecorder(combinedStream, getVideoExportRecorderOptions(preset, exportFormat));
+                recorderRef.current = recorder;
+                const stopped = new Promise<void>((resolve, reject) => {
+                    recorder.ondataavailable = event => {
+                        if (event.data.size > 0) chunks.push(event.data);
+                    };
+                    recorder.onerror = () => reject(new Error(t('export.recorderUnknownError')));
+                    recorder.onstop = () => resolve();
+                });
+                const requestStop = () => {
+                    if (recorder.state !== 'inactive') recorder.stop();
+                };
+                endedListener = requestStop;
+                audioElement.addEventListener('ended', requestStop, { once: true });
+
+                recorder.start(1000);
+                const recordingStart = {
+                    progress: segmentIndex / job.outputs.length,
+                    elapsed: segmentIndex * job.duration,
+                };
+                await updateRunning('recording', target.orientation, recordingStart.progress, recordingStart.elapsed);
+                segmentProgress('recording', 0);
+                await resumePlayback();
+
+                progressIntervalId = window.setInterval(() => {
+                    const elapsed = Math.max(0, audioElement.currentTime);
+                    const value = Math.min(1, elapsed / job.duration);
+                    const next = segmentProgress('recording', value);
+                    void updateRunning('recording', target.orientation, next.progress, next.elapsed);
+                    if (elapsed >= job.duration - 0.12) requestStop();
+                }, 250);
+
+                await stopped;
+                if (progressIntervalId !== null) {
+                    window.clearInterval(progressIntervalId);
+                    progressIntervalId = null;
+                }
+                if (cancelRequestedRef.current) throw new Error(t('export.recordingCancelled'));
+
+                const finalizing = segmentProgress('finalizing', 1);
+                await updateRunning('finalizing', target.orientation, finalizing.progress, finalizing.elapsed);
+                const blob = new Blob(chunks, { type: exportFormat.mimeType });
+                if (blob.size === 0) throw new Error(t('export.recorderUnknownError'));
+                await electron.writeVideoExportFile(target.filePath, await toArrayBuffer(blob));
+                outputs.push({
+                    orientation: target.orientation,
+                    width: target.width,
+                    height: target.height,
+                    fileName: target.fileName,
+                    filePath: target.filePath,
+                    sizeBytes: blob.size,
+                });
+                await updateRunning('finalizing', target.orientation, finalizing.progress, finalizing.elapsed);
+
+                stopMediaStream(videoStream);
+                stopMediaStream(audioStream);
+                stopMediaStream(combinedStream);
+                videoStream = null;
+                audioStream = null;
+                combinedStream = null;
+                if (endedListener) {
+                    audioElement.removeEventListener('ended', endedListener);
+                    endedListener = null;
+                }
+                recorderRef.current = null;
+                audioElement.pause();
+            }
+
+            await updateJob({
+                jobId: job.id,
+                status: 'succeeded',
+                outputs,
+            });
+            setExportState(prev => ({
+                ...prev,
+                status: 'done',
+                progress: 1,
+                elapsed: job.duration * 2,
+                filePath: job.outputDirectory,
+                error: null,
+            }));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            await updateJob({
+                jobId: job.id,
+                status: cancelRequestedRef.current ? 'cancelled' : 'failed',
+                outputs,
+                error: cancelRequestedRef.current ? null : message,
+            }).catch(() => undefined);
+            setExportState(cancelRequestedRef.current
+                ? idleVideoExportState()
+                : {
+                    ...idleVideoExportState(),
+                    status: 'error',
+                    error: message,
+                });
+        } finally {
+            if (progressIntervalId !== null) window.clearInterval(progressIntervalId);
+            if (endedListener) audioElement.removeEventListener('ended', endedListener);
+            recorderRef.current = null;
+            stopMediaStream(videoStream);
+            stopMediaStream(audioStream);
+            stopMediaStream(combinedStream);
+            audioElement.loop = previousLoop;
+            if (wasPaused) {
+                audioElement.pause();
+                audioElement.currentTime = previousTime;
+                currentTime.set(previousTime);
+            }
+            setIsPlayerChromeHidden(false);
+            removeCursorGuard?.();
+            void electron.restoreVideoExportWindow();
+            runningRef.current = false;
+            cancelRequestedRef.current = false;
+        }
+    }, [audioRef, currentSong, currentTime, isElectronWindow, navigateToPlayer, pausePlayback, resumePlayback, setIsPanelOpen, setIsPlayerChromeHidden, t]);
+
     const handleExportCommand = useCallback((command: RemoteControlCommand) => {
         if (command.type === 'start-export') {
             void startExport(command.preset, command.startMode);
+            return true;
+        }
+
+        if (command.type === 'start-batch-export') {
+            void startBatchExport(command.job);
+            return true;
+        }
+
+        if (command.type === 'cancel-batch-export') {
+            stopActiveExport(true);
             return true;
         }
 
@@ -294,7 +613,7 @@ export const useElectronVideoExportController = ({
         }
 
         return false;
-    }, [startExport, stopActiveExport]);
+    }, [startBatchExport, startExport, stopActiveExport]);
 
     // Automatically reset export status back to 'idle' after completion (3s) or error (4s)
     useEffect(() => {

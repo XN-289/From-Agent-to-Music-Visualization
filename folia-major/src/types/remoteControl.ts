@@ -1,5 +1,10 @@
 import type { PlayerState, LyricData } from '../types';
-import type { VideoExportPreset, VideoExportStartMode, VideoExportState } from './videoExport';
+import type {
+    BatchVideoExportJob,
+    VideoExportPreset,
+    VideoExportStartMode,
+    VideoExportState,
+} from './videoExport';
 
 // src/types/remoteControl.ts
 // Shared payloads for the Electron remote control window.
@@ -23,6 +28,8 @@ export type RemoteControlCommand =
     | { type: 'start-export'; preset: VideoExportPreset; startMode: VideoExportStartMode }
     | { type: 'stop-export' }
     | { type: 'cancel-export' }
+    | { type: 'start-batch-export'; job: BatchVideoExportJob }
+    | { type: 'cancel-batch-export' }
     | { type: 'toggle-like' };
 
 export interface RemoteControlSnapshot {

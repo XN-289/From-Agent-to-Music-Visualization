@@ -23,6 +23,9 @@ describe("visual recipe", () => {
 
     expect(normalizeVisualRecipe({ id: "unknown", intensity: 50, temperature: 0, chorusImpact: 50 })).toBeNull();
     expect(normalizeVisualRecipe("neon-night")).toBeNull();
+    expect(
+      normalizeVisualRecipe({ id: "neon-night", intensity: 72.4, temperature: 3.6, chorusImpact: 76.5 }),
+    ).toEqual({ id: "neon-night", intensity: 72, temperature: 4, chorusImpact: 77 });
   });
 
   it("builds bounded stage filter and ambience styles", () => {

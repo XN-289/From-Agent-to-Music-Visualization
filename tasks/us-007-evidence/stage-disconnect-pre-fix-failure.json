@@ -1,0 +1,1109 @@
+{
+  "ok": false,
+  "songId": "bbcae587-6a94-4492-9fb3-3c348a9224ae",
+  "stageSessionId": "stage-1788155908480-69c75df6-756f-417b-8b2c-0b7088af805d",
+  "stageUpdatedAt": 1788155908857,
+  "stoppedAt": 1788155914701,
+  "lastAppearanceAfterDisconnect": {
+    "bg": "#f5f5f4",
+    "primary": "#1c1917",
+    "secondary": "#44403c",
+    "accent": "#ea580c",
+    "hasSongTitle": false,
+    "hasFirstLyric": false,
+    "isStageAudio": true,
+    "audio": [
+      {
+        "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+        "paused": true,
+        "currentTime": 0,
+        "duration": null
+      }
+    ],
+    "daylightPreference": "true",
+    "animationPreference": null
+  },
+  "samples": [
+    {
+      "phase": "recipe-active",
+      "atMs": 1788155914352,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155914745,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 0.156735,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155915007,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 0.417959,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155915280,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 0.699321,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155915536,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 0.946213,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155915798,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 1.213517,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155916070,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 1.481998,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155916336,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 1.747302,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155916599,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 2.015928,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155916870,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 2.283645,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155917128,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 2.543476,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155917402,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 2.819014,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155917671,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 3.085959,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155917934,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 3.349478,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155918188,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 3.60561,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155918452,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 3.864847,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155918708,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 4.122298,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155918975,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 4.388571,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155919234,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 4.649679,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155919493,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 4.905215,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155919760,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 5.174767,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155920021,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 5.436595,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155920285,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#2ee6ff",
+        "secondary": "#d3e2ff",
+        "accent": "#ff5fae",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": false,
+            "currentTime": 5.700499,
+            "duration": 24
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155920960,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155921718,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155922164,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155922760,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155923140,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155923458,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155923869,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155924225,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155924532,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155924847,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155925178,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155925566,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155925931,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155926313,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155926592,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155926991,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155927267,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155927607,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155928017,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155928303,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155928633,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155928971,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155929307,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    },
+    {
+      "phase": "after-disconnect",
+      "atMs": 1788155929651,
+      "appearance": {
+        "bg": "#f5f5f4",
+        "primary": "#1c1917",
+        "secondary": "#44403c",
+        "accent": "#ea580c",
+        "hasSongTitle": false,
+        "hasFirstLyric": false,
+        "isStageAudio": true,
+        "audio": [
+          {
+            "src": "http://127.0.0.1:32108/stage/media/current/audio?v=1788155908857",
+            "paused": true,
+            "currentTime": 0,
+            "duration": null
+          }
+        ],
+        "daylightPreference": "true",
+        "animationPreference": null
+      }
+    }
+  ]
+}

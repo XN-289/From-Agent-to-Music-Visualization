@@ -1,0 +1,70 @@
+{
+  "viewport": {
+    "innerWidth": 1440,
+    "devicePixelRatio": 1
+  },
+  "document": {
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "clientHeight": 900,
+    "scrollHeight": 900
+  },
+  "main": {
+    "clientHeight": 731,
+    "scrollHeight": 731,
+    "scrollTop": 0,
+    "clientWidth": 1440,
+    "scrollWidth": 1440
+  },
+  "provider": "Mock 生成",
+  "previewLabel": true,
+  "listeningCaveat": true,
+  "iframe": true,
+  "panels": [
+    {
+      "index": 0,
+      "tag": "aside",
+      "overflowY": "auto",
+      "clientHeight": 637,
+      "scrollHeight": 637,
+      "clientWidth": 238,
+      "scrollWidth": 238,
+      "rect": {
+        "left": 16,
+        "top": 133,
+        "right": 256,
+        "bottom": 772
+      }
+    },
+    {
+      "index": 1,
+      "tag": "section",
+      "overflowY": "hidden",
+      "clientHeight": 637,
+      "scrollHeight": 637,
+      "clientWidth": 734,
+      "scrollWidth": 734,
+      "rect": {
+        "left": 272,
+        "top": 133,
+        "right": 1008,
+        "bottom": 772
+      }
+    },
+    {
+      "index": 2,
+      "tag": "aside",
+      "overflowY": "auto",
+      "clientHeight": 639,
+      "scrollHeight": 639,
+      "clientWidth": 400,
+      "scrollWidth": 400,
+      "rect": {
+        "left": 1024,
+        "top": 133,
+        "right": 1424,
+        "bottom": 772
+      }
+    }
+  ]
+}

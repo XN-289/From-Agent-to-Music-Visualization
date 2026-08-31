@@ -208,6 +208,20 @@ export interface StageVisualConfig {
   disableVisualizerVignette: boolean;
 }
 
+export interface StageAppearanceSnapshot {
+  themes: {
+    light: Theme;
+    dark: Theme;
+  };
+  visualizerMode: VisualizerMode;
+  visualizerBackgroundMode: VisualizerBackgroundMode | null;
+  backgroundOpacity: number;
+  visualizerOpacity: number;
+  useCoverColorBg: boolean;
+  disableVisualizerGeometricBackground: boolean;
+  disableVisualizerVignette: boolean;
+}
+
 export interface StageMediaSession {
   id: string;
   title: string;

@@ -153,6 +153,7 @@ contextBridge.exposeInMainWorld('electron', {
     publishStagePlayerSnapshot: (snapshot, options) => ipcRenderer.invoke('stage-publish-player-snapshot', snapshot, options),
     completeStagePlayerControlRequest: (result) => ipcRenderer.invoke('stage-complete-player-control', result),
     completeStagePlayerQueueRequest: (result) => ipcRenderer.invoke('stage-complete-player-queue', result),
+    updateStageExportJob: (update) => ipcRenderer.invoke('stage-update-export-job', update),
     onStageSessionUpdated: (callback) => {
         const listener = (_event, status) => callback(status);
         ipcRenderer.on('stage-session-updated', listener);

@@ -17,7 +17,9 @@ export default async function StudioPage() {
     createdAt: song.createdAt.getTime(),
   }));
 
-  return (
-    <StudioWorkspace songs={songs} foliaBaseUrl={foliaWebUrl()} hasProcessing={songs.some((song) => song.status === "processing")} />
+  const hasProcessing = songs.some(
+    (song) => song.status === "submitted" || song.status === "generating",
   );
+
+  return <StudioWorkspace songs={songs} foliaBaseUrl={foliaWebUrl()} hasProcessing={hasProcessing} />;
 }

@@ -1,7 +1,9 @@
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LyricsLine } from '@/lib/audio/lrc';
 import { renderCoverPng } from '@/lib/cover';
+import { isDecodableCoverFile, isPlayableAudioFile } from '@/lib/media-probe';
 import { extensionForImageUrl } from '@/lib/media-mime';
 import type { SongVariant } from '@/lib/providers/types';
 
@@ -39,6 +41,11 @@ export interface LoadedSongBundle extends PersistedSongBundle {
   variants: SongVariant[];
   lrc: LyricsLine[];
   tLrc: LyricsLine[];
+}
+
+export interface ValidatedPersistedSong {
+  bundle: LoadedSongBundle | null;
+  issues: string[];
 }
 
 function mediaRoot(): string {
@@ -80,6 +87,17 @@ async function downloadFile(url: string, destination: string): Promise<void> {
         error instanceof Error ? error.message : String(error),
       );
     }
+  }
+
+  if (/^data:/i.test(url)) {
+    const match = url.match(/^data:([^,]*),([\s\S]*)$/);
+    if (!match) throw new Error('下载失败（data URL 无效）');
+    const [, metadata, payload] = match;
+    const bytes = /;base64/i.test(metadata)
+      ? Buffer.from(payload, 'base64')
+      : Buffer.from(decodeURIComponent(payload), 'utf8');
+    await writeFile(destination, bytes);
+    return;
   }
 
   const resolvedUrl = resolveAudioUrl(url);
@@ -131,6 +149,46 @@ function resolveAudioUrl(url: string): string {
   if (configuredOrigin) return `${configuredOrigin}${url.startsWith('/') ? url : `/${url}`}`;
   const port = process.env.PORT?.trim() || '3000';
   return `http://127.0.0.1:${port}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
+async function isReadableFile(filePath: string | null | undefined): Promise<boolean> {
+  if (!filePath) return false;
+  try {
+    await access(filePath, constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function validatePersistedSongBundle(bundle: LoadedSongBundle): Promise<string[]> {
+  const audioFilesReadable = await Promise.all(
+    bundle.audioPaths.map((audio) => isPlayableAudioFile(audio.path)),
+  );
+  const audioReadable = bundle.audioPaths.length > 0 && audioFilesReadable.every(Boolean);
+  const lyricsReadable =
+    Boolean(bundle.lyrics?.trim()) &&
+    bundle.lrc.length > 0 &&
+    (await isReadableFile(bundle.lyricsTxtPath)) &&
+    (await isReadableFile(bundle.lyricsLrcPath));
+  const coverReadable = await isDecodableCoverFile(bundle.coverPath);
+  const metaReadable = await isReadableFile(bundle.metaPath);
+
+  return [
+    audioReadable ? null : '音频缺失或不可读',
+    lyricsReadable ? null : '歌词缺失',
+    coverReadable ? null : '封面缺失或不可读',
+    metaReadable ? null : '元数据缺失或不可读',
+  ].filter((issue): issue is string => issue !== null);
+}
+
+export async function persistValidatedGeneratedSong(input: PersistSongInput): Promise<ValidatedPersistedSong> {
+  await persistGeneratedSong(input);
+  const bundle = await loadPersistedSong(input.songId);
+  return {
+    bundle,
+    issues: bundle ? await validatePersistedSongBundle(bundle) : ['产物落盘失败'],
+  };
 }
 
 export async function persistGeneratedSong(input: PersistSongInput): Promise<PersistedSongBundle> {

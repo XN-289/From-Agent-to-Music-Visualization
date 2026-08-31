@@ -1,4 +1,5 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { GENERATION_JOB_STATUSES, GENERATION_STATUSES } from '@/lib/generation-state';
 import type { VisualRecipe } from '@/lib/visual-recipe';
 
 // P0 用 SQLite 起步（务实 MVP，零部署依赖）；Drizzle 迁移到 Postgres 只需换驱动 + 微调列类型。
@@ -39,7 +40,7 @@ export const songs = sqliteTable(
     styleTags: text('style_tags', { mode: 'json' }).$type<string[]>(),
     prompt: text('prompt'),
     instrumental: integer('instrumental', { mode: 'boolean' }).notNull().default(false),
-    status: text('status', { enum: ['draft', 'processing', 'done', 'failed'] })
+    status: text('status', { enum: GENERATION_STATUSES })
       .notNull()
       .default('draft'),
     progress: integer('progress').notNull().default(0),
@@ -75,7 +76,7 @@ export const generationJobs = sqliteTable(
       .notNull()
       .references(() => songs.id),
     providerId: text('provider_id').notNull(),
-    status: text('status', { enum: ['pending', 'processing', 'success', 'failed'] }).notNull(),
+    status: text('status', { enum: GENERATION_JOB_STATUSES }).notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },

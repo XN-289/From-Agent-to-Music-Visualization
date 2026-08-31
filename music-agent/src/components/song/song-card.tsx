@@ -5,13 +5,14 @@ import { usePlayerStore } from "@/components/player/player-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { coverGradient } from "@/lib/cover-theme";
+import type { GenerationStatus } from "@/lib/generation-state";
 import { Music2, Pause, Play } from "lucide-react";
 
 export interface SongCardData {
   id: string;
   title: string;
   styleTags: string[] | null;
-  status: "draft" | "processing" | "done" | "failed";
+  status: GenerationStatus;
   progress: number;
   variants: { id: string; audioUrl: string; title: string; durationSec: number }[] | null;
   createdAt: number;
@@ -43,7 +44,7 @@ export function SongCard({ song }: { song: SongCardData }) {
             }}
           />
           <Music2 className="h-10 w-10 text-white/80" />
-          {song.status === "processing" && (
+          {(song.status === "submitted" || song.status === "generating") && (
             <Badge className="absolute left-2 top-2 bg-white/90 text-foreground">{song.progress}%</Badge>
           )}
           {song.status === "failed" && (

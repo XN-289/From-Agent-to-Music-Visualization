@@ -25,6 +25,7 @@ import {
 import { Type } from '@sinclair/typebox';
 import { getProvider } from '@/lib/providers';
 import { SYSTEM_PROMPT } from './prompt';
+import { assertGenerationRequestComplete } from './generation-request';
 import { stripTranslationLines } from '@/lib/audio/lrc';
 import { db, schema } from '@/lib/db';
 import { and, desc, eq } from 'drizzle-orm';
@@ -67,6 +68,7 @@ const generateMusicToolDef = defineTool({
     ),
   }),
   execute: async (_toolCallId, params) => {
+    assertGenerationRequestComplete(params);
     spendPaidCallBudget(); // 付费调用预算：防注入批量烧钱
     assertFirstSongConfirmed(budgetAls.getStore()?.chatId); // 首首歌必须先经用户确认
     const { jobId, songId } = await submitGeneration(

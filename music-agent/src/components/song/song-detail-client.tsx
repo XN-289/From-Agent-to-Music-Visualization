@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { pollJob } from "@/lib/client";
 import type { LyricsLine } from "@/lib/audio/lrc";
+import type { GenerationStatus } from "@/lib/generation-state";
 import { usePlayerStore } from "@/components/player/player-store";
 import { WaveformPlayer } from "@/components/player/waveform-player";
 import { LyricsPanel } from "@/components/song/lyrics-panel";
@@ -24,7 +25,7 @@ export interface SongDetailData {
   styleTags: string[] | null;
   prompt: string | null;
   instrumental: boolean;
-  status: "draft" | "processing" | "done" | "failed";
+  status: GenerationStatus;
   progress: number;
   stage: string | null;
   variants: { id: string; audioUrl: string; title: string; durationSec: number; audioId?: string }[] | null;
@@ -81,14 +82,18 @@ export function SongDetailClient({
 
   // 生成中：轮询 job，实时刷新进度；完成/失败后刷新服务端组件拿到最新数据
   useEffect(() => {
-    if (song.status !== "processing" || !jobId) return;
+    if ((song.status !== "submitted" && song.status !== "generating") || !jobId) return;
     let cancelled = false;
     const controller = new AbortController();
     pollJob(
       jobId,
       (r) => {
         if (cancelled) return;
-        if (r.job.status === "success" || r.job.status === "failed") {
+        if (
+          r.job.status === "completed" ||
+          r.job.status === "failed" ||
+          r.job.status === "cancelled"
+        ) {
           router.refresh();
         } else {
           setLive({ progress: r.job.progress, stage: r.job.stage });
@@ -215,15 +220,15 @@ export function SongDetailClient({
           </Badge>
         ))}
         {song.instrumental && <Badge variant="secondary">纯音乐</Badge>}
-        {song.status === "processing" && (
+        {(song.status === "submitted" || song.status === "generating") && (
           <Badge variant="secondary">生成中 {song.progress}%</Badge>
         )}
         {song.status === "failed" && <Badge className="bg-destructive text-white">失败</Badge>}
-        {song.status === "done" && parent && <Badge variant="outline">迭代版本</Badge>}
+        {song.status === "completed" && parent && <Badge variant="outline">迭代版本</Badge>}
       </div>
       {song.prompt && <p className="mt-1 text-sm text-muted-foreground">{song.prompt}</p>}
 
-      {song.status === "processing" && (
+      {(song.status === "submitted" || song.status === "generating") && (
         <div className="mt-6 space-y-2 rounded-xl border p-4">
           <p className="text-sm text-muted-foreground">
             {live?.stage ?? song.stage ?? "排队中…"} · {live?.progress ?? song.progress}%
@@ -330,7 +335,7 @@ export function SongDetailClient({
             <Button
               variant="outline"
               size="sm"
-              disabled={song.status !== "done"}
+              disabled={song.status !== "completed"}
               title="复用这首歌的提示词与风格，创作新歌"
               onClick={() => router.push(`/?reuse=${song.id}`)}
             >
@@ -339,7 +344,7 @@ export function SongDetailClient({
             <Button
               variant="outline"
               size="sm"
-              disabled={song.status !== "done" || pushBusy}
+              disabled={song.status !== "completed" || pushBusy}
               title="推送到 Folia Stage 并打开"
               onClick={() => void pushToFolia()}
             >

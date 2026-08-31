@@ -26,7 +26,7 @@ export async function ensureLocalSong(songId: string): Promise<LoadedSongBundle 
   if (existing?.audioPaths.length) return existing;
 
   const song = (await db.select().from(schema.songs).where(eq(schema.songs.id, songId)))[0];
-  if (!song || song.status !== 'done' || !song.variants?.length) return null;
+  if (!song || song.status !== 'completed' || !song.variants?.length) return null;
 
   let lrc: LyricsLine[] = [];
   if (song.lyricsLrc) {

@@ -1,5 +1,6 @@
 // 客户端 API 助手：轮询生成任务、读取歌曲。
 // 所有 Suno 后端都是异步 job 模型，前端统一用 pollJob 驱动进度 UI。
+import type { GenerationJobStatus, GenerationStatus } from '@/lib/generation-state';
 
 export interface SongDto {
   id: string;
@@ -9,7 +10,7 @@ export interface SongDto {
   styleTags: string[] | null;
   prompt: string | null;
   instrumental: boolean;
-  status: 'draft' | 'processing' | 'done' | 'failed';
+  status: GenerationStatus;
   progress: number;
   stage: string | null;
   variants: {
@@ -26,7 +27,7 @@ export interface SongDto {
 }
 
 export interface JobPollResult {
-  job: { id: string; status: string; progress: number; stage: string; error?: string };
+  job: { id: string; status: GenerationJobStatus; progress: number; stage: string; error?: string };
   song: SongDto | null;
 }
 
@@ -46,7 +47,13 @@ export async function pollJob(
     if (!res.ok) throw new Error(`job poll failed: ${res.status}`);
     const data = (await res.json()) as JobPollResult;
     onUpdate(data);
-    if (data.job.status === 'success' || data.job.status === 'failed') return data;
+    if (
+      data.job.status === 'completed' ||
+      data.job.status === 'failed' ||
+      data.job.status === 'cancelled'
+    ) {
+      return data;
+    }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }

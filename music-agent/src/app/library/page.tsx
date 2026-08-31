@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function LibraryPage() {
   await sweepStaleProcessingSongs(); // mock 重启后的中断任务清扫（进程内只跑一次）
   const songs = await db.select().from(schema.songs).orderBy(desc(schema.songs.createdAt));
-  const hasProcessing = songs.some((s) => s.status === "processing");
+  const hasProcessing = songs.some(
+    (s) => s.status === "submitted" || s.status === "generating",
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">

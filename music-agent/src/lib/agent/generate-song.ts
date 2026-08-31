@@ -6,6 +6,10 @@ import { getProvider } from '@/lib/providers';
 import { db, schema } from '@/lib/db';
 import { stripTranslationLines } from '@/lib/audio/lrc';
 import { withLyricLanguageGuard } from '@/lib/audio/lyric-language';
+import {
+  transitionGenerationStatus,
+  type GenerationJobStatus,
+} from '@/lib/generation-state';
 
 export interface SubmitGenerationInput {
   title: string;
@@ -30,44 +34,66 @@ export async function submitGeneration(input: SubmitGenerationInput, chatId?: st
     input.prompt,
     providerLyrics,
   );
-  const { jobId } = await provider.generateMusic({
+  const now = new Date();
+  await db.insert(schema.songs).values({
+    id: songId,
+    chatId: chatId ?? null, // 会话归属：确认 gate 依赖此字段判断「本对话是否已有歌曲」
     title: input.title,
-    lyrics: providerLyrics,
-    styleTags,
-    prompt,
+    lyrics: input.lyrics,
+    styleTags: input.styleTags,
+    prompt: input.prompt,
     instrumental: input.instrumental ?? false,
-    referenceAudioUrl: input.referenceAudioUrl,
-    model: input.model,
-    duration: input.duration,
+    status: 'draft',
+    createdAt: now,
+    updatedAt: now,
   });
 
-  const now = new Date();
-  // 事务：歌曲行与任务行同生共死，避免孤儿 processing 歌曲。
-  // 注意：better-sqlite3 是同步驱动，事务回调必须同步执行，且查询是惰性的——必须 .run() 才会执行。
-  db.transaction((tx) => {
-    tx.insert(schema.songs)
-      .values({
-        id: songId,
-        chatId: chatId ?? null, // 会话归属：确认 gate 依赖此字段判断「本对话是否已有歌曲」
-        title: input.title,
-        lyrics: input.lyrics,
-        styleTags: input.styleTags,
-        prompt: input.prompt,
-        instrumental: input.instrumental ?? false,
-        status: 'processing',
-        createdAt: now,
-        updatedAt: now,
+  let jobId: string;
+  try {
+    ({ jobId } = await provider.generateMusic({
+      title: input.title,
+      lyrics: providerLyrics,
+      styleTags,
+      prompt,
+      instrumental: input.instrumental ?? false,
+      referenceAudioUrl: input.referenceAudioUrl,
+      model: input.model,
+      duration: input.duration,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await db
+      .update(schema.songs)
+      .set({
+        status: transitionGenerationStatus('draft', 'failed'),
+        progress: 100,
+        stage: '提交失败',
+        error: `生成提交失败：${message}`,
+        updatedAt: new Date(),
       })
-      .run();
+      .where(eq(schema.songs.id, songId));
+    throw error;
+  }
+
+  const submitted = transitionGenerationStatus(
+    'draft',
+    'submitted',
+  ) as GenerationJobStatus;
+  const submittedAt = new Date();
+  db.transaction((tx) => {
     tx.insert(schema.generationJobs)
       .values({
         id: jobId,
         songId,
         providerId: provider.id,
-        status: 'pending',
-        createdAt: now,
-        updatedAt: now,
+        status: submitted,
+        createdAt: submittedAt,
+        updatedAt: submittedAt,
       })
+      .run();
+    tx.update(schema.songs)
+      .set({ status: submitted, updatedAt: submittedAt })
+      .where(eq(schema.songs.id, songId))
       .run();
   });
 
@@ -95,7 +121,7 @@ export async function createIterationSong(
     styleTags: patch.styleTags ?? parent.styleTags,
     prompt: patch.prompt ?? parent.prompt,
     instrumental: parent.instrumental,
-    status: 'processing',
+    status: 'submitted',
     createdAt: now,
     updatedAt: now,
   });
@@ -108,7 +134,7 @@ export async function recordJob(jobId: string, songId: string, providerId: strin
     id: jobId,
     songId,
     providerId,
-    status: 'pending',
+    status: 'submitted',
     createdAt: now,
     updatedAt: now,
   });
@@ -121,14 +147,40 @@ export async function commitIteration(
   jobId: string,
   providerId: string,
 ) {
-  const { songId } = await createIterationSong(parentSongId, patch);
-  try {
-    await recordJob(jobId, songId, providerId);
-  } catch (e) {
-    // 任务行写失败：回滚歌曲行，避免孤儿
-    await db.delete(schema.songs).where(eq(schema.songs.id, songId));
-    throw e;
-  }
+  const parent = (
+    await db.select().from(schema.songs).where(eq(schema.songs.id, parentSongId))
+  )[0];
+  if (!parent) throw new Error(`歌曲不存在: ${parentSongId}`);
+
+  const songId = crypto.randomUUID();
+  const now = new Date();
+  db.transaction((tx) => {
+    tx.insert(schema.songs)
+      .values({
+        id: songId,
+        parentId: parentSongId,
+        chatId: parent.chatId,
+        title: patch.title ?? parent.title,
+        lyrics: patch.lyrics ?? parent.lyrics,
+        styleTags: patch.styleTags ?? parent.styleTags,
+        prompt: patch.prompt ?? parent.prompt,
+        instrumental: parent.instrumental,
+        status: 'submitted',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    tx.insert(schema.generationJobs)
+      .values({
+        id: jobId,
+        songId,
+        providerId,
+        status: 'submitted',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+  });
   return { songId };
 }
 
@@ -157,7 +209,7 @@ export async function getSongForAgent(songId: string) {
   if (!song) return null;
   // inspect 时同步任务状态：failed 任务的行可能还没被曲库页 sweep 同步（sweep 进程内只跑一次），
   // 会导致 Agent 看到 stale 的「processing」而无法启动自动修复（自动修复链路实测抓出）。
-  if (song.status === 'processing') {
+  if (song.status === 'submitted' || song.status === 'generating') {
     try {
       const job = (
         await db

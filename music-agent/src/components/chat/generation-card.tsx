@@ -46,7 +46,7 @@ export function GenerationCard({
   }, [jobId]);
 
   const variants = useMemo(() => res?.song?.variants ?? [], [res?.song?.variants]);
-  const done = res?.job.status === "success";
+  const done = res?.job.status === "completed";
   const failed = res?.job.status === "failed";
 
   useEffect(() => {

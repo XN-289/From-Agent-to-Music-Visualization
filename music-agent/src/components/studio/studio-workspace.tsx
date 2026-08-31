@@ -12,13 +12,14 @@ import {
   type VisualRecipe,
 } from "@/lib/visual-recipe";
 import { buildFoliaVisualRecipeUrl } from "@/lib/visual-recipe-to-folia";
+import type { GenerationStatus } from "@/lib/generation-state";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Loader2, RefreshCw, Save } from "lucide-react";
 
 export interface StudioSong {
   id: string;
   title: string;
-  status: "draft" | "processing" | "done" | "failed";
+  status: GenerationStatus;
   progress: number;
   visualRecipe: VisualRecipe | null;
   createdAt: number;
@@ -33,7 +34,7 @@ export function StudioWorkspace({
   foliaBaseUrl: string;
   hasProcessing: boolean;
 }) {
-  const initialSong = songs.find((song) => song.status === "done") ?? songs[0] ?? null;
+  const initialSong = songs.find((song) => song.status === "completed") ?? songs[0] ?? null;
   const [selectedId, setSelectedId] = useState(initialSong?.id ?? "");
   const selected = songs.find((song) => song.id === selectedId) ?? initialSong;
   const [recipe, setRecipe] = useState<VisualRecipe | null>(initialSong?.visualRecipe ?? null);
@@ -44,7 +45,10 @@ export function StudioWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const doneSongs = useMemo(() => songs.filter((song) => song.status === "done"), [songs]);
+  const doneSongs = useMemo(
+    () => songs.filter((song) => song.status === "completed"),
+    [songs],
+  );
   const activePreset = recipe ? getVisualRecipePreset(recipe.id) : null;
   const stageUrl = useMemo(() => {
     if (!recipe) {
@@ -98,7 +102,7 @@ export function StudioWorkspace({
   }
 
   async function pushStage() {
-    if (!selected || selected.status !== "done" || pushing) return;
+    if (!selected || selected.status !== "completed" || pushing) return;
     setPushing(true);
     setError(null);
     setMessage(null);
@@ -124,7 +128,7 @@ export function StudioWorkspace({
         </div>
         <div className="flex items-center gap-2">
           {selected && <span className="text-xs text-muted-foreground">{selected.title}</span>}
-          <Button variant="outline" size="sm" disabled={!selected || selected.status !== "done" || pushing} onClick={() => void pushStage()}>
+          <Button variant="outline" size="sm" disabled={!selected || selected.status !== "completed" || pushing} onClick={() => void pushStage()}>
             {pushing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
             推送舞台
           </Button>
@@ -152,7 +156,9 @@ export function StudioWorkspace({
               >
                 <span className="block truncate text-sm font-medium">{song.title}</span>
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  {song.status === "processing" ? `生成中 ${song.progress}%` : new Date(song.createdAt).toLocaleDateString()}
+                  {song.status === "submitted" || song.status === "generating"
+                    ? `生成中 ${song.progress}%`
+                    : new Date(song.createdAt).toLocaleDateString()}
                 </span>
               </button>
             ))}

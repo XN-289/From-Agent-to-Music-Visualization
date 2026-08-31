@@ -31,3 +31,6 @@ Thumbs.db
 
 # Stage API dev runtime (stage-api-dev.cjs)
 folia-major/.stage-api-dev/
+
+# One-click Studio startup state and logs
+.runtime/

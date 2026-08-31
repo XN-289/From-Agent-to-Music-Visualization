@@ -38,7 +38,7 @@ npm test
 Pop-Location
 ```
 
-日常使用按用户手册手动启动：Music Agent 使用 `3003`，Folia web 使用 `3004`，Folia Stage 默认 `32107`；实际端口以配置和 Folia 界面为准。US-009 的一键启动脚本尚未实现，不要假设根目录已有 `启动Studio.cmd`。
+日常使用先完成用户手册的首次准备，然后双击根目录 `启动Studio.cmd`。脚本会启动 Music Agent（3003）、Folia web（3004）、Electron 开发服务（3000）与 Folia Stage（默认 32107），通过语义健康检查后自动打开 `/studio`；需要停止时双击 `停止Studio.cmd`。若端口被未知进程占用，脚本会列出占用者并拒绝接管。手动多终端启动只作为调试路径保留在用户手册中。
 
 ## 许可证
 

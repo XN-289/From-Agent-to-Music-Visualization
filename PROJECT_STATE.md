@@ -1,10 +1,10 @@
 # PROJECT_STATE
 
-Updated: 2026-08-31 19:22
+Updated: 2026-08-31 20:01
 Current phase: implementation / verification
 
 ## 一句话现状
-项目已进入 PRD v1.3 的 R0“现有体验收口”批次。当前基线为 `2978b22` + 当前工作区，`US-001 对话生成中文歌`、`US-002 日文歌中文翻译副字幕`、`US-003 自动推送 Stage 与兜底`、`US-005 Studio 三栏工作台`、`US-006 当前配方保存`、`US-007 配方驱动 Folia 原生舞台`、`US-008 三配方用户定稿`、`US-010 Mock 结构感知时间轴`、`US-011 Prompt 分阶段加载`、`US-012 文档与 PRD 对齐` 已通过；`US-004` 横竖屏导出实现与定向验证已存在，但正式导出验收尚未完成，随后还需补齐并冷启动验收 `US-009`。
+项目已进入 PRD v1.3 的 R0“现有体验收口”批次。当前基线为 `01ac744` + 证据工作区，`US-001 对话生成中文歌`、`US-002 日文歌中文翻译副字幕`、`US-003 自动推送 Stage 与兜底`、`US-005 Studio 三栏工作台`、`US-006 当前配方保存`、`US-007 配方驱动 Folia 原生舞台`、`US-008 三配方用户定稿`、`US-010 Mock 结构感知时间轴`、`US-011 Prompt 分阶段加载`、`US-012 文档与 PRD 对齐` 已通过；`US-004` 已完成真实 Electron 横竖屏导出与机器证据，待用户看片确认后关闭，最后冷启动验收 `US-009`。
 
 ## 已接受事实
 - PRD v1.3（`tasks/prd-agent-music-visual-studio.md`）是唯一需求源；实现、测试、文档与排期冲突时，先修订 PRD 并登记决策，再修改代码或文档。来源：US-012 与 `decisions.md`。
@@ -25,6 +25,7 @@ Current phase: implementation / verification
 - `music-agent -> visualConfig -> StageMediaSession -> App useEffect` 已闭合，不是仅生成带 `cfg` 的 URL。来源：本轮代码与真实播放器复验。
 - Folia web 舞台接受 `?obs=1&obsSource=now-playing` 与 `cfg`/`visualizer` 参数；`cfg` 使用与 `folia-major/src/utils/appearanceCodec.ts` 一致的 minified JSON + base64 shortcode。来源：本轮代码与 Folia 入口。
 - 2026-08-31 拉取 GitHub 后基线快进到 `2978b22`（`wip: harden generation pipeline for PRD R0`），新增 PRD v1.3、US-001 验收记录、生成请求门禁、生成状态、媒体探测与对应测试。来源：`git pull --ff-only` 与 `git log`。
+- 2026-08-31 当前基线已推进到 `01ac744`（`feat: advance R0 studio and export pipeline`），R0 Studio、Stage、导出与多数验收记录已在提交内。来源：`git log` 与 `git status`。
 - PRD v1.3 规定 R0 门槛为 `US-001` 至 `US-012` 全部通过；执行顺序是先修生成产物完整性与失败态，再修 Stage，再收口 Studio、Mock 时间轴、Prompt 与文档，用户定稿三配方后正式导出，最后冷启动跑 `US-009`。来源：`tasks/prd-agent-music-visual-studio.md`。
 - `US-001` 已按 Mock 与真实 Provider 双链路验收：中文歌产物、歌词、封面、数据库终态、SHA-256 与离线无网络断言均有记录；`pnpm test` 12 files / 61 tests、`tsc --noEmit`、`pnpm lint`（0 error / 3 warning）通过。来源：`tasks/us-001-acceptance.md`。
 - `US-002` 已按 Mock 日文歌、独立 `t.lrc`、MP3 双 USLT、Stage multipart 与真实浏览器 DOM 采样验收：songId `20e25d17-b339-421d-b835-96e4eedb0507`，四个主/译同屏时间点偏差均不超过 300ms；本轮还把日文翻译完整性门禁下沉到 `submitGeneration()` 付费/落库前。来源：`tasks/us-002-acceptance.md`。
@@ -34,6 +35,7 @@ Current phase: implementation / verification
 - `US-006` 已按 Mock Provider 与隔离数据库完成视觉期待展示、保存状态矩阵、失败恢复、服务端规范化回填、再次变脏与刷新恢复验收；全程未调用真实 Provider、未生成新歌、未消耗付费额度。来源：`tasks/us-006-acceptance.md`。
 - `US-011` 已按 baseline 快照、四阶段 prompt 快照、保守 token 统计、质量 rubric、阶段路由、空对话防误进 generation 与真实 `DefaultResourceLoader.reload()` 逐字装载测试验收；最低降幅 50.38%，全程未调用真实 LLM / 音乐 Provider。来源：`tasks/us-011-acceptance.md`。
 - `US-008` 已按固定真实歌、固定段落、固定 viewport、固定亮度和严格顺序完成用户定稿；Livehouse、Rain Window、Neon Night 均由用户明确判定通过，当前最终配方为 `neon-night(72,4,76)`。来源：用户确认与 `tasks/us-008-acceptance.md`。
+- `US-004` 已用定稿配方完成真实 Electron 串行横竖屏导出：job `stage-export-1788175429500-d9920797-6f51-407d-82e0-fc5210676ece` 成功，两个 MP4 均为 H.264 Baseline + AAC LC，帧数分别为 10,285 / 10,801，8 个抽帧哈希全部不同。来源：`tasks/us-004-acceptance.md` 与 ffprobe / Get-FileHash 命令结果。
 
 ## 决策索引
 - 2026-08-26 — 项目从“Music Agent + Folia 管线拼接”升级为“Agent 导演 + Folia 舞台 + 视觉配方”的统一个人创作产品；v2 先落地 `/studio`、可保存视觉配方与内嵌舞台预览，不做账号、云同步或自研渲染引擎。来源：用户确认，`decisions.md`。
@@ -69,7 +71,7 @@ Current phase: implementation / verification
 - Mock 结构感知时间轴 — `music-agent/src/lib/audio/lrc.ts`、`jobs/[id]/route.ts` — 验证：结构加权、无结构均分 fallback、真实时间轴有效性校验与坏数据回退均有测试；`pnpm test` 18 files / 89 tests、`tsc --noEmit`、`pnpm lint`、`pnpm build` 通过。
 - Prompt 四阶段加载 — `music-agent/src/lib/agent/prompt.ts`、`prompt-stage.ts`、`pi.ts`、`src/lib/harness/prompt-stages.json`、`stages/*.md`、`scripts/prompt-stats.mjs` — 验证：需求挖掘 / 写词 / 生成 / 迭代只装载本阶段 harness，阶段 session 复用同 chat 最新历史，失败可重试，空对话“生成吧 / 开始生成”不直接进入 generation；`pnpm test` 19 files / 105 tests、`pnpm exec tsc --noEmit`、`pnpm lint`、`pnpm build` 通过。
 - R0 文档与 PRD 对齐 — `README.md`、`docs/使用与开发流程.md`、`docs/pipeline.md`、`docs/项目执行手册.md`、`music-agent/README.md`、`.env.example`、`folia-stage.ts`、`media-output.ts` — 验证：当前手册覆盖启动、生成、视觉期待、播放与手动导出；入口文档无旧端口 / 本机绝对路径 / 旧排期冲突；`pnpm test` 19 files / 105 tests、`tsc --noEmit`、`lint` 0 error / 3 既有 warning、`build` 通过。来源：`tasks/us-012-acceptance.md`。
-- US-004 横竖屏导出实现 — `music-agent/src/app/api/songs/[id]/export-folia/route.ts`、`export-folia/open/route.ts`、`folia-export-panel.tsx` 与 Folia Stage `/stage/export/*` API、`electron/videoExportWindow.cjs`、`useElectronVideoExportController.ts` — 验证：Music Agent `pnpm test` 19 files / 105 tests、`tsc --noEmit`、`lint` 0 error / 3 既有 warning、`build` 通过；Folia `npm run typecheck` 与 Stage 导出 / 外观 session / 音频切换定向 Vitest 3 files / 23 tests 通过；`tasks/us-004-evidence/` 已有 4 张竖屏抽帧，但 ffprobe、文件大小、SHA-256、完整横竖屏证据和用户验收仍未登记。
+- US-004 横竖屏导出实现 — `music-agent/src/app/api/songs/[id]/export-folia/route.ts`、`export-folia/open/route.ts`、`folia-export-panel.tsx` 与 Folia Stage `/stage/export/*` API、`electron/videoExportWindow.cjs`、`useElectronVideoExportController.ts` — 验证：真实 Electron 串行导出成功；横竖屏均为 H.264 + AAC MP4；窗口物理尺寸与缩放显式校验；本轮 Music Agent `pnpm test` 19 files / 105 tests、`tsc --noEmit`，Folia `npm run typecheck` 与导出 / Stage API 2 files / 19 tests 均通过。来源：`tasks/us-004-acceptance.md`。
 
 ## 已验收
 - `US-012 文档与 PRD 对齐` 机器验收通过：PRD 唯一需求源已登记；用户手册支持手动全流程；3003 / 3004 / 32107 端口口径统一；旧日期、旧端口、旧路径、旧排期与旧翻译结论已盘点并归档。来源：`tasks/us-012-acceptance.md` 与 `tasks/us-012-evidence/`。
@@ -91,14 +93,16 @@ Current phase: implementation / verification
 - `US-010 Mock 结构感知时间轴` 机器验收通过：Mock 24 秒日文歌按 Intro/Verse/Chorus/Outro 权重生成 `0-2400-6400-10400-16000-21600-24000ms` 边界，主/翻完全共轴；空、乱序、重叠、负数、倒置、越界与纯标记真实时间轴均回退。来源：`tasks/us-010-acceptance.md` 与 `tasks/us-010-evidence/`。
 - `US-011 Prompt 分阶段加载` 机器验收通过：baseline 17,674 字符 / 估算 12,022 tokens；discovery / lyric / generation / iteration 分别估算 2,082 / 5,965 / 4,035 / 3,926 tokens，降幅 82.68% / 50.38% / 66.44% / 67.34%，四阶段质量 rubric 与 DefaultResourceLoader 逐字装载测试均通过。来源：`tasks/us-011-acceptance.md` 与 `tasks/us-011-evidence/`。
 - `US-008 三配方用户定稿` 用户验收通过：用户原话为 `Livehouse 通过，Rain Window 通过，Neon Night 通过`；九张播放截图 SHA-256 已复核，三个 Stage session 与 `machine-review.json` 一致。来源：`tasks/us-008-acceptance.md` 与 `tasks/us-008-evidence/`。
+- `US-004 横竖屏导出` 机器证据通过：真实 Electron 主窗口导出、串行任务、MP4 编码、分辨率、帧数、动态抽帧、无聊天 UI 复核与最终测试均通过；用户尚未确认成片可发布。来源：`tasks/us-004-acceptance.md` 与 `tasks/us-004-evidence/final-20260831-*`。
 
 ## 未决问题
 - P2 — Next build 仍报告 `media-output.ts` 的动态文件系统 tracing warnings；当前不影响单机自用，但未来若部署需收窄路径或加 ignore 标记。
 
 ## 下一步
-1. 使用 `neon-night(72,4,76)` 执行真实横竖屏正式导出，并登记 ffprobe、抽帧、文件名、大小与 SHA-256 证据。
-2. 补齐 PRD US-009 的 `启动Studio.cmd` / `scripts/start-studio.mjs` 实现与前置检查。
-3. 从服务停止状态冷启动执行 `US-009`；任何卡点修复后完整重跑。
+1. 用户查看并确认 `C:\Users\linma\Videos\Folia Exports\2026-08-31T11-23-49-498Z-神降・天火` 中横竖屏成片。
+2. 实现 PRD 14.2 的 US-009 启动入口：`启动Studio.cmd`、`scripts/start-studio.mjs`、停止脚本、`.runtime/studio-services.json` 与日志目录约定。
+3. 为启动脚本补端口预检、语义健康检查、全有或全无、未知端口拒绝、日志保留与进程归属测试。
+4. 从服务停止状态冷启动执行 `US-009`；任何卡点修复后完整重跑。
 
 ## 恢复上下文
 - 仓库根目录：`D:\从Agent到音乐可视化`
@@ -109,7 +113,7 @@ Current phase: implementation / verification
 - 已知坑：Windows 中文路径；Folia Stage token 来自 Electron 设置；Folia 使用 Node >= 24.0.0；SQLite 使用 WAL 且写入方唯一。
 
 ## 最近更新
-- 2026-08-31 — 盘点当前工作区：`US-004` 导出 API、导出面板、Stage 任务控制与串行横竖屏导出实现已存在，Music Agent 全量验证和 Folia 定向验证通过；正式导出证据与用户验收仍未完成，状态保持“已实现 / 未验收”。影响 R0 收口顺序与 Git 交付口径。
+- 2026-08-31 — `US-004` 完成真实 Electron 横竖屏导出机器证据：修复竖屏窗口超出工作区导致的冻结，登记 job/session、编码、帧数、哈希、抽帧与测试结果；状态为待用户看片确认。影响 R0 收口与 US-009 启动时序。
 - 2026-08-31 — `US-008 三配方用户定稿` 用户验收通过，三个配方均不再调整，当前定稿配方为 `neon-night(72,4,76)`；PRD 矩阵与 OQ-1 已关闭，状态台账切换到 `US-004`。影响 R0 验收进度与导出前置条件。
 - 2026-08-31 — `US-012 文档与 PRD 对齐` 机器验收通过，重写用户手册，统一 3003 / 3004 / 32107 口径，修正翻译链路文档，归档旧执行手册，并登记 PRD 唯一需求源；状态台账切换到 `US-008`。影响 R0 验收进度与 US-009 前置边界。
 - 2026-08-31 — `US-011 Prompt 分阶段加载` 机器验收通过，补齐四阶段 manifest、快照统计、阶段路由、空对话防误进 generation、stage-specific AgentSession 与 DefaultResourceLoader 装载证据；状态台账切换到 `US-012`。影响 R0 验收进度与下一步实现边界。
